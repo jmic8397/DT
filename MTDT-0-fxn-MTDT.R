@@ -1,169 +1,4 @@
-#algm for non-MAE - takes list of dataframes
-MTDT.algm <- function(dataList,
-                      modelList,
-                      rsmpList,
-                      tierList,
-                      fixedTier,
-                      ssercutoffList,
-                      k=5, times=100, rsmp=100,
-                      seed=1, verbose=F){
-  
-  
-  
-  
-  
-  #how many different datasets
-  nblocks = length(dataList)
-  
-  #returns matrix of permutations of models
-  myperms = perm(nblocks)
-  
-  
-  #Fix tier if specified
-  if(!(is.null(fixedTier))){
-    #adjust perms for clinical as first tier
-    for(tier in 1:length(tierList)){
-      if(tierList[tier] == fixedTier ){
-        #swap fixed tier and tier 1, fixedTier is now tier 1
-        temp = tierList[1]
-        tierList[1] = tierList[tier]
-        tierList[tier] = temp
-        #concat a column of tier 1 with the remaining permutations to enforce this new fixing of 'fixedTier'
-        myperms = data.frame(rep(1,nblocks-1),(perm(1:(nblocks-1))+1))
-        nblocks = nblocks-1
-        
-      }
-    }
-  }
 
-
-  MTlist = list()
-  
-  #for each row
-  for (nperm in 1:dim(myperms)[1]) {
-    
-    #create a new list
-    MTunits = list()
-    #create # retained
-    id.retained = NULL
-    #create sequence
-    tierseq = NULL
-    
-    #for each col of each row 
-    for (ntier in 1:dim(myperms)[2]){
-      #set tierseq and tier as per myperms #
-      tierseq = c(tierseq, tierList[[myperms[nperm, ntier]]])
-    }
-    tierseq = paste0(tierseq, collapse="-")
-    
-    #for each col of each row
-    for (ntier in 1:dim(myperms)[2]){
-      
-      #z = which # as per permutation
-      z = myperms[nperm, ntier]
-      data = dataList[[z]]
-      model = modelList[[z]]
-      rsmpmethod = rsmpList[[z]]
-      tier = tierList[[z]]
-      ssercutoff = ssercutoffList[[z]]
-      modelclass = class(model)
-      
-      #assume ID first column, y second column
-      IDnm = colnames(data)[1]
-      ynm = colnames(data)[2]
-      
-      #sym takes strings and turns them into symbols
-      ID_nm = sym(IDnm)
-      y_nm = sym(ynm)
-      
-      #because id is a symbol now, !! tells dplyr to ignore its quotes and read its literal value instead
-      #if id not in retained then we include it
-      id.include = data %>% 
-        dplyr::filter(!(!!ID_nm) %in% id.retained) %>% 
-        dplyr::select(!!ID_nm) %>% 
-        as_vector 
-      names(id.include) <- NULL #set name of object to null? no col headings
-      
-
-      
-      
-      #linear model / linear regression
-      if ("glm" %in% modelclass) {
-        if ("lrm" %in% modelclass) {
-          formula = model$sformula
-          method = "lrm"
-        } else {
-          formula = model$formula
-          method = "glm"
-        }
-      }
-      
-      #linear disc analysis
-      if ("lda_diag" %in% modelclass) {
-        formula = NULL
-        method = "dlda"
-        rsmpmethod = "boot"
-      }
-      
-      #KNN
-      ##############################
-      if ("knn" %in% modelclass) {
-        formula = NULL
-        method = "knn"
-        rsmpmethod = "rcv"
-      }
-      ############################
-      
-      #SVM
-      ##############################
-      if ("svm" %in% modelclass) {
-        formula = NULL
-        method = "svm"
-        rsmpmethod = "rcv"
-      }
-      ############################
-      
-      #e.g. (1) Clin-Histo-Nano: <Clin>
-      print(paste0("(", nperm, ") ", tierseq, ": <", tier, ">"))
-      # print(paste0("nperms = ", nperm, " ; ntiers = ", ntier, " ; tier = ", tier)) #############<-------------------------
-      
-      
-      #pass model and data to MTblock which returns retained status of current sequence layer
-      MTunits[[ntier]] = MTblock(
-        data=data, id.include=id.include,
-        formula=formula, model=model, method=method, 
-        rsmpmethod=rsmpmethod, k=k, times=times, rsmp=rsmp,
-        ssercutoff=ssercutoff, tier=tier, plotlabel=tier,
-        seed=seed, verbose=verbose
-      )
-      
-      id.retained = c(id.retained, MTunits[[ntier]]$id$id.retained)
-      # 
-
-      
-      retained = MTunits[[ntier]]$id$id.retained %>% unique() %>% length()
-      toprogress = MTunits[[ntier]]$id$id.toprogress %>% unique() %>% length()
-      notprocessed = MTunits[[ntier]]$id$id.notprocessed %>% unique() %>% length()
-      total = retained+toprogress+notprocessed
-      processed=retained+toprogress
-      print(paste0("    Total = ", total,  ""))
-      print(paste0("    Processed = ", processed, 
-                   " (", retained, " retained, ",
-                   toprogress, " to progress to next tier)"))
-      print(paste0("    Not processed = ", notprocessed))
-    }
-    
-    MTlist[[nperm]] = MTunits
-    
-  }
-  
-  return(MTDTobject = list(MTlist=MTlist,
-                           myperms=myperms,
-                           dataList=dataList,
-                           modelList=modelList,
-                           tierList=tierList,
-                           ssercutoffList=ssercutoffList))
-}
 
 #classifyR version
 #we will use the function in producting the MTDT summary
@@ -325,7 +160,7 @@ MTDT.algmClassifyR <-   function(MAEobject,
         MAEdataAsFrame = as.data.frame(colData(MAEobject))
         
         
-        id.retained = (2854)
+        id.retained = list()
         
         MAEwithoutRetained = MAEobject
         
@@ -336,92 +171,11 @@ MTDT.algmClassifyR <-   function(MAEobject,
             MAEwithoutRetained = MAEwithoutRetained[,retainList & !is.na(retainList),]
           }
         }
-        
-        print(colData(MAEobject))
-        print(colData(MAEwithoutRetained))
-        
-        #because id is a symbol now, !! tells dplyr to ignore its quotes and read its literal value instead
-        #if id not in retained then we include it
-        #here we are filtering to collect the retained samples
-        # id.include = MAEdataAsFrame %>% 
-        #   dplyr::filter(!(!!ID_nm) %in% id.retained) %>% 
-        #   dplyr::select(!!ID_nm) %>% 
-        #   as_vector 
-        # names(id.include) <- NULL #set name of object to null? no col headings
         # 
+        # print(colData(MAEobject))
+        # print(colData(MAEwithoutRetained))
+        
 
-        #change the below to map to classifyR model types (instead of glm,lda etc) (check man)
-        #also update params to pass into runTest
-        #e.g. params = list(SelectParams(limmaSelection, "Moderated t Statistic",  resubstituteParams = resubstituteParams), TrainParams(DLDAtrainInterface), PredictParams(DLDApredictInterface)
-        #linear model / linear regression
-        
-        
-        # if ("glm" %in% modelclass) {
-        #   
-        #   
-        #   #update params for GLM
-        #   # params = list(SelectParams(limmaSelection, "Moderated t Statistic",
-        #   #                            resubstituteParams = resubstituteParams),
-        #   #               TrainParams(DLDAtrainInterface),
-        #   #               PredictParams(DLDApredictInterface)
-        #                 
-        #                 
-        #   if ("lrm" %in% modelclass) {
-        #     formula = model$sformula
-        #     method = "lrm"
-        #   } else {
-        #     formula = model$formula
-        #     method = "glm"
-        #   }
-        # }
-        # 
-        # #linear disc analysis
-        # #update params
-        # if ("lda_diag" %in% modelclass) {
-        #   
-        #   #update params for DLDA
-        #   params = list(SelectParams(limmaSelection, "Moderated t Statistic",
-        #                              resubstituteParams = resubstituteParams),
-        #                 TrainParams(DLDAtrainInterface),
-        #                 PredictParams(DLDApredictInterface))
-        #                 
-        #   formula = NULL
-        #   method = "dlda"
-        #   rsmpmethod = "boot"
-        # }
-        # 
-        # #KNN
-        # ##############################
-        # if ("knn" %in% modelclass) {
-        #   formula = NULL
-        #   method = "knn"
-        #   rsmpmethod = "rcv"
-        #   
-        #   #update params for KNN
-        #   # params = list(SelectParams(limmaSelection, "Moderated t Statistic",
-        #   #                            resubstituteParams = resubstituteParams),
-        #   #               TrainParams(DLDAtrainInterface),
-        #   #               PredictParams(DLDApredictInterface)
-        #   
-        #   
-        # }
-        # ############################
-        # 
-        # #SVM
-        # ##############################
-        # if ("svm" %in% modelclass) {
-        #   formula = NULL
-        #   method = "svm"
-        #   rsmpmethod = "rcv"
-        #   
-        #   #update params for SVM
-        #   # params = list(SelectParams(limmaSelection, "Moderated t Statistic",
-        #   #                            resubstituteParams = resubstituteParams),
-        #   #               TrainParams(DLDAtrainInterface),
-        #   #               PredictParams(DLDApredictInterface)
-        #   
-        # }
-        # ############################
         
         #Create tierstring
         #e.g. (1) Clin-Histo-Nano: <Clin>
@@ -478,7 +232,7 @@ MTDT.algmClassifyR <-   function(MAEobject,
     
     return(MTDTobject = list(MTlist=MTlist,
                              myperms=myperms,
-                             dataList=measurements,
+                             dataList=MAEobject,
                              modelList=modelList,
                              tierList=tierList,
                              ssercutoffList=ssercutoffList))

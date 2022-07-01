@@ -56,6 +56,9 @@ source("./MTDT-1-datachecking.R")
 # 
 # results <- calcCVperformance(results)
 
+
+#testing area
+
 results <- runTests(melanomaAssaysNorm, targets = "NanoString", outcomesColumns = "class1vs4years")
 print(results)
 
@@ -109,6 +112,12 @@ This program aims to use a sequential, machine learning approach to build a fore
 diagnostic trees with multi-omics data. This will allow for comparison of the cost and accuracy of different sequences of predictive models. With this information, we hope to enable better informed decisions of diagnostic processes.
 
 At each node of the tree, a machine learning model is used to establish the sample specific accuracy of health outcome predictions for a single layer of the multi-omics data (e.g. how accurate is the prediction for a single individual based on their histology data?). If the prediction can not be made with sufficient accuracy, the individual will progress to the next level where an alternative model and layer of the omics data will be used. Currently each layer is analysed seperately, such that we have analysis of multiple single-omics datasets (ensemble learning to be implemented ?) 
+
+Original - Andy Wang- # Multi-tier decision tree
+
+Here we have 3 input models. Each model comprised of different sources of predictor variables. There were differences in terms of how these predictors variables could be obtained, how invasive they could be acquired, and how much they cost. The goal here is to find an optimal testing sequence with the different input models that we have, balancing it with the tier model error rates (TSER), the difficulty and differences in their unit cost.  
+
+The idea here is that we would predict patients' outcome with the 3 input models in sequence/tiers. Once a prediction has been made for a particular patient/sample with an input model, we would determine if the error rate for that patient using that particular model is satisfactory by setting a pre-determined error rate cutoff. If the patient/sample specific error rate (SSER) is too high, this particular patient/sample would progress to the next tier model, until either the SSER is satisfactory, or we determined the patient/sample could not be satisfactorily classified with the input models we have.  
 
 
 # Demonstration of MTDT function for ClassifyR
@@ -183,7 +192,9 @@ tierList = c( "microRNA"  ,    "NanoString"   , "iTRAQabsolute")
 
 #Sample specific error cutoffs 
 #(E.g. x | if the sample specific error of cross validated prediction is > x, the sample will 'progress' to the next tier. Lower cutoff = higher retention generally)
-ssercutoffList= list(c(0.4, 0.4, 0.4),c(0.45, 0.45, 0.45)) # -> to be implemented for multi-threshold analysis
+# ssercutoffList= list(c(0.4, 0.4, 0.4),c(0.45, 0.45, 0.45)) # -> For multi-threshold analysis
+ssercutoffList= list(c(0.4, 0.4, 0.4)) 
+
 
 #Tier costs (e.g. price of performing test for an individual)
 tierUnitCosts = c(100, 500, 1000)

@@ -43,8 +43,7 @@ GeneralMTDT <- function(MultiAssayExperiment,
 #fixedtier is whether to fix the first tier of permutations
 
 #determine inputs and call relevant function
-if(class(MultiAssayExperiment) == "MultiAssayExperiment"){
-  # print("Hi")
+
   
   #we pass the data into MTDT.algm which calls ClassifyR and returns the file containing the error
   
@@ -80,18 +79,7 @@ if(class(MultiAssayExperiment) == "MultiAssayExperiment"){
 
   
   
-  }else{
-    MTDTresults = MTDT.algm(MultiAssayExperiment,
-                                     modelList,
-                                     rsmpList,
-                                     tierList,
-                                      fixedTier = fixedTier,
-                                     ssercutoffList = ssercutoffList,
-                                     k=5, times=100, rsmp=100,
-                                     seed=1, verbose=F)
-  }
   
-
 
 return(MTDTresults)
 

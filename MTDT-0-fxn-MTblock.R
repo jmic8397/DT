@@ -264,19 +264,19 @@ MTblockClassifyR <- function(data=NULL, id.retained=NULL, formula=NULL, model=NU
   
   id.retained = TSERcutoff$Stratification %>% 
     dplyr::filter(strata=="Retained") %>% 
-    dplyr::select(!!ID_nm) %>% 
+    dplyr::select(SampleID) %>% 
     as_vector()
 
   id.toprogress = TSERcutoff$Stratification %>% 
     dplyr::filter(strata=="To progress") %>% 
-    dplyr::select(!!ID_nm) %>% 
+    dplyr::select(SampleID) %>% 
     as_vector()
 
   id.notprocessed = TSERcutoff$Stratification %>% 
     dplyr::filter(strata=="Not processed") %>% 
-    dplyr::select(!!ID_nm) %>% 
+    dplyr::select(SampleID) %>% 
     as_vector()
-  id.notprocessed = c(id.notprocessed, id.notincluded)
+  id.notprocessed = c(id.notprocessed)
   names(id.retained) <- NULL
   names(id.toprogress) <- NULL
   names(id.notprocessed) <- NULL
