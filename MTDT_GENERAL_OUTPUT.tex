@@ -1,0 +1,506 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{ifxetex,ifluatex}
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+  pdftitle={MTDT\_Function\_ClassifyR},
+  pdfauthor={Andy Tran \& Jamie Mickaill},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+\urlstyle{same} % disable monospaced font for URLs
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifluatex
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+
+\title{MTDT\_Function\_ClassifyR}
+\author{Andy Tran \& Jamie Mickaill}
+\date{01/02/2022}
+
+\begin{document}
+\maketitle
+
+\hypertarget{multi-tier-decision-tree-for-clinical-diagnostics}{%
+\section{Multi Tier Decision Tree for Clinical
+Diagnostics}\label{multi-tier-decision-tree-for-clinical-diagnostics}}
+
+This program aims to use a sequential, machine learning approach to
+build a forest of multi-level clinical diagnostic trees with multi-omics
+data. This will allow for comparison of the cost and accuracy of
+different diagnostic sequences. With this information, we hope to enable
+better informed decisions of diagnostic processes.
+
+At each node of the tree, a machine learning model is used to establish
+the sample specific accuracy of health outcome predictions for a single
+layer of the multi-omics data (e.g.~how accurate is the prediction for a
+single individual based on their histology data). If the prediction can
+not be made with sufficient accuracy, the individual will progress to
+the next level where an alternative model and layer of the omics data
+will be used. Currently each layer is analysed seperately, such that we
+have analysis of multiple single-omics datasets (ensemble learning to be
+implemented ?)
+
+\hypertarget{demonstration-of-mtdt-function-for-classifyr}{%
+\section{Demonstration of MTDT function for
+ClassifyR}\label{demonstration-of-mtdt-function-for-classifyr}}
+
+Below we create a mock MAE, assign some example runTest() parameters,
+and pass it to our GeneralMTDT() function. We then generate plots with
+the resulting data.
+
+\hypertarget{mock-dataset}{%
+\section{Mock Dataset}\label{mock-dataset}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#Mock Dataset}
+
+\DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+
+\NormalTok{  genesMatrix }\OtherTok{\textless{}{-}} \FunctionTok{matrix}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{90}\NormalTok{, }\DecValTok{9}\NormalTok{, }\DecValTok{1}\NormalTok{),}
+                         \FloatTok{5.2}\NormalTok{, }\FloatTok{5.3}\NormalTok{, }\FloatTok{9.4}\NormalTok{, }\FloatTok{9.4}\NormalTok{, }\FloatTok{9.6}\NormalTok{, }\FloatTok{9.9}\NormalTok{, }\FloatTok{9.1}\NormalTok{, }\FloatTok{9.8}\NormalTok{,}\FloatTok{9.5}\NormalTok{, }\FloatTok{9.4}\NormalTok{),}
+              \AttributeTok{ncol =} \DecValTok{10}\NormalTok{, }\AttributeTok{byrow =} \ConstantTok{TRUE}\NormalTok{)}
+
+\NormalTok{  genesMatrix2 }\OtherTok{\textless{}{-}} \FunctionTok{matrix}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{90}\NormalTok{, }\DecValTok{9}\NormalTok{, }\DecValTok{1}\NormalTok{),}
+                         \FloatTok{5.2}\NormalTok{, }\FloatTok{5.3}\NormalTok{, }\FloatTok{9.4}\NormalTok{, }\FloatTok{9.4}\NormalTok{, }\FloatTok{9.6}\NormalTok{, }\FloatTok{9.9}\NormalTok{, }\FloatTok{9.1}\NormalTok{, }\FloatTok{9.8}\NormalTok{,}\FloatTok{9.5}\NormalTok{, }\FloatTok{9.4}\NormalTok{),}
+              \AttributeTok{ncol =} \DecValTok{10}\NormalTok{, }\AttributeTok{byrow =} \ConstantTok{TRUE}\NormalTok{)}
+
+\NormalTok{    genesMatrix3 }\OtherTok{\textless{}{-}} \FunctionTok{matrix}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{90}\NormalTok{, }\DecValTok{9}\NormalTok{, }\DecValTok{1}\NormalTok{),}
+                         \FloatTok{5.2}\NormalTok{, }\FloatTok{5.3}\NormalTok{, }\FloatTok{9.4}\NormalTok{, }\FloatTok{9.4}\NormalTok{, }\FloatTok{9.6}\NormalTok{, }\FloatTok{9.9}\NormalTok{, }\FloatTok{9.1}\NormalTok{, }\FloatTok{9.8}\NormalTok{,}\FloatTok{9.5}\NormalTok{, }\FloatTok{9.4}\NormalTok{),}
+              \AttributeTok{ncol =} \DecValTok{10}\NormalTok{, }\AttributeTok{byrow =} \ConstantTok{TRUE}\NormalTok{)}
+  
+  \FunctionTok{colnames}\NormalTok{(genesMatrix) }\OtherTok{\textless{}{-}} \FunctionTok{paste}\NormalTok{(}\StringTok{"Sample"}\NormalTok{, }\DecValTok{1}\SpecialCharTok{:}\DecValTok{10}\NormalTok{)}
+  \FunctionTok{rownames}\NormalTok{(genesMatrix) }\OtherTok{\textless{}{-}} \FunctionTok{paste}\NormalTok{(}\StringTok{"Gene"}\NormalTok{, }\DecValTok{1}\SpecialCharTok{:}\DecValTok{10}\NormalTok{)}
+    \FunctionTok{colnames}\NormalTok{(genesMatrix2) }\OtherTok{\textless{}{-}} \FunctionTok{paste}\NormalTok{(}\StringTok{"Sample"}\NormalTok{, }\DecValTok{1}\SpecialCharTok{:}\DecValTok{10}\NormalTok{)}
+  \FunctionTok{rownames}\NormalTok{(genesMatrix2) }\OtherTok{\textless{}{-}} \FunctionTok{paste}\NormalTok{(}\StringTok{"Gene"}\NormalTok{, }\DecValTok{1}\SpecialCharTok{:}\DecValTok{10}\NormalTok{)}
+      \FunctionTok{colnames}\NormalTok{(genesMatrix3) }\OtherTok{\textless{}{-}} \FunctionTok{paste}\NormalTok{(}\StringTok{"Sample"}\NormalTok{, }\DecValTok{1}\SpecialCharTok{:}\DecValTok{10}\NormalTok{)}
+  \FunctionTok{rownames}\NormalTok{(genesMatrix3) }\OtherTok{\textless{}{-}} \FunctionTok{paste}\NormalTok{(}\StringTok{"Gene"}\NormalTok{, }\DecValTok{1}\SpecialCharTok{:}\DecValTok{10}\NormalTok{)}
+  
+\NormalTok{  genders }\OtherTok{\textless{}{-}} \FunctionTok{factor}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{"Male"}\NormalTok{, }\StringTok{"Male"}\NormalTok{, }\StringTok{"Female"}\NormalTok{, }\StringTok{"Female"}\NormalTok{, }\StringTok{"Female"}\NormalTok{,}
+                    \StringTok{"Female"}\NormalTok{, }\StringTok{"Female"}\NormalTok{, }\StringTok{"Female"}\NormalTok{, }\StringTok{"Female"}\NormalTok{, }\StringTok{"Female"}\NormalTok{))}
+
+  \CommentTok{\# Scenario: Male gender can predict the hard{-}to{-}classify Sample 1 and Sample 2.}
+\NormalTok{  clinical }\OtherTok{\textless{}{-}} \FunctionTok{DataFrame}\NormalTok{(}\AttributeTok{Person\_ID =} \FunctionTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{,}\DecValTok{4}\NormalTok{,}\DecValTok{5}\NormalTok{,}\DecValTok{6}\NormalTok{,}\DecValTok{7}\NormalTok{,}\DecValTok{8}\NormalTok{,}\DecValTok{9}\NormalTok{,}\DecValTok{10}\NormalTok{),}
+                        \AttributeTok{class =} \FunctionTok{rep}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{), }\AttributeTok{each =} \DecValTok{5}\NormalTok{),}
+    \AttributeTok{age =} \FunctionTok{c}\NormalTok{(}\DecValTok{31}\NormalTok{, }\DecValTok{34}\NormalTok{, }\DecValTok{32}\NormalTok{, }\DecValTok{39}\NormalTok{, }\DecValTok{33}\NormalTok{, }\DecValTok{38}\NormalTok{, }\DecValTok{34}\NormalTok{, }\DecValTok{37}\NormalTok{, }\DecValTok{35}\NormalTok{, }\DecValTok{36}\NormalTok{),}
+                        \AttributeTok{gender =}\NormalTok{ genders,}
+                        
+                \AttributeTok{row.names =} \FunctionTok{colnames}\NormalTok{(genesMatrix))}
+  
+\NormalTok{  dataset }\OtherTok{\textless{}{-}} \FunctionTok{MultiAssayExperiment}\NormalTok{(}\FunctionTok{ExperimentList}\NormalTok{(}\AttributeTok{RNA =}\NormalTok{ genesMatrix, }\AttributeTok{RNA2 =}\NormalTok{ genesMatrix2, }\AttributeTok{RNA3 =}\NormalTok{ genesMatrix3), clinical)}
+
+  
+\DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{mock-inputs}{%
+\subsection{Mock Inputs}\label{mock-inputs}}
+
+Below is where the user can modify parameters of ClassifyR's runTest/s()
+function
+
+New features include
+
+\begin{itemize}
+\item
+  First tier fixing
+\item
+  Final tier retain-all
+\end{itemize}
+
+To be implemented
+
+\begin{itemize}
+\item
+  Multiple Accuracy-threshold outputs
+\item
+  Adjustable training params
+\item
+  Parameter bounds (E.g. only display sequences \textless{} \$x)
+\item
+  Add Parameters (E.g. time, risk)
+\item
+  Extensive error checking of inputs
+\item
+  runTest() or runTests()
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#Mock Inputs}
+  
+\DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+
+\CommentTok{\#Main MAE                                   }
+\NormalTok{MultiAssayExperiment }\OtherTok{=}\NormalTok{ dataset}
+
+\CommentTok{\#classificationNames {-} to be checked with classifyR docs}
+\NormalTok{modelList }\OtherTok{=} \FunctionTok{list}\NormalTok{(}\StringTok{"Easy{-}Hard"}\NormalTok{, }\StringTok{"Easy{-}Hard"}\NormalTok{, }\StringTok{"Easy{-}Hard"}\NormalTok{) }
+
+\CommentTok{\#Not sure if this will be needed for runTests}
+\NormalTok{rsmpList }\OtherTok{=} \FunctionTok{list}\NormalTok{(}\StringTok{"rcv"}\NormalTok{, }\StringTok{"rcv"}\NormalTok{, }\StringTok{"boot"}\NormalTok{)}
+
+\CommentTok{\#List of tiers}
+\CommentTok{\#Can probably use names(experiments(measurements)) + clinical for tiers}
+\NormalTok{tierList }\OtherTok{=} \FunctionTok{list}\NormalTok{(}\StringTok{"RNA1"}\NormalTok{, }\StringTok{"RNA2"}\NormalTok{, }\StringTok{"RNA3"}\NormalTok{) }
+
+\CommentTok{\#Sample specific error cutoffs (E.g. x | if the sample specific error of cross validated prediction is \textgreater{} x, the sample will \textquotesingle{}progress\textquotesingle{}to the next tier. Lower cutoff = higher retention generally)}
+\NormalTok{ssercutoffList }\OtherTok{=} \FunctionTok{c}\NormalTok{(}\FloatTok{0.4}\NormalTok{, }\FloatTok{0.4}\NormalTok{, }\FloatTok{0.4}\NormalTok{)}
+\CommentTok{\#Multicutoffs = c(c(0.1, 0.1, 0.1),c(0.2, 0.2, 0.2),c(0.3, 0.3, 0.3) ) {-}\textgreater{} to be implemented for multi{-}threshold analysis}
+
+\CommentTok{\#Tier costs}
+\NormalTok{tierUnitCosts }\OtherTok{=} \FunctionTok{c}\NormalTok{(}\DecValTok{100}\NormalTok{, }\DecValTok{500}\NormalTok{, }\DecValTok{1000}\NormalTok{)}
+
+\CommentTok{\#Which tier to fix as first in Tree? (If any)}
+\CommentTok{\#fixedTier = "Clinical"}
+\CommentTok{\# fixedTier = "RNA1"}
+\NormalTok{fixedTier }\OtherTok{=} \ConstantTok{NULL}
+
+\CommentTok{\#Model parameters?}
+\NormalTok{selParams }\OtherTok{\textless{}{-}} \FunctionTok{SelectParams}\NormalTok{(}\AttributeTok{featureSelection =}\NormalTok{ differentMeansSelection, }\AttributeTok{selectionName =} \StringTok{"Difference in Means"}\NormalTok{,}
+                            \AttributeTok{resubstituteParams =} \FunctionTok{ResubstituteParams}\NormalTok{(}\DecValTok{1}\SpecialCharTok{:}\DecValTok{10}\NormalTok{, }\StringTok{"balanced error"}\NormalTok{, }\StringTok{"lower"}\NormalTok{))}
+
+\CommentTok{\#runtest() or runtests()}
+\NormalTok{runtestorruntests }\OtherTok{=} \StringTok{"runtest"}
+
+\CommentTok{\#name of classifier column in dataset}
+\NormalTok{classes }\OtherTok{=} \StringTok{"class"}
+
+\CommentTok{\#other params}
+\NormalTok{params }\OtherTok{=} \FunctionTok{list}\NormalTok{(}\FunctionTok{SelectParams}\NormalTok{(), }\FunctionTok{TrainParams}\NormalTok{(), }\FunctionTok{PredictParams}\NormalTok{())}
+
+\CommentTok{\#leave k out}
+\NormalTok{leave }\OtherTok{=} \DecValTok{2}
+
+\CommentTok{\#what percentage for training dataset (Not currently used)}
+\NormalTok{percent}\OtherTok{=}\DecValTok{25}
+
+\CommentTok{\#Minimum overlap}
+\NormalTok{minimumOverlapPercent }\OtherTok{=} \DecValTok{80}
+
+\CommentTok{\#Validation method}
+\NormalTok{validation }\OtherTok{=} \FunctionTok{c}\NormalTok{(}\StringTok{"permute"}\NormalTok{, }\StringTok{"leaveOut"}\NormalTok{, }\StringTok{"fold"}\NormalTok{)}
+
+\CommentTok{\#parallelization info}
+\NormalTok{parallelParams }\OtherTok{=} \FunctionTok{bpparam}\NormalTok{()}
+
+\CommentTok{\#EasyHard Params}
+\NormalTok{easyDatasetID }\OtherTok{=} \StringTok{"clinical"}
+\NormalTok{hardDatasetID }\OtherTok{=} \FunctionTok{names}\NormalTok{(MultiAssayExperiment)[}\DecValTok{1}\NormalTok{]}
+\NormalTok{easyClassifierParams }\OtherTok{=} \FunctionTok{list}\NormalTok{(}\AttributeTok{minCardinality =} \DecValTok{2}\NormalTok{, }\AttributeTok{minPurity =} \FloatTok{0.9}\NormalTok{)}
+\NormalTok{hardClassifierParams }\OtherTok{=} \FunctionTok{list}\NormalTok{(selParams, }\FunctionTok{TrainParams}\NormalTok{(), }\FunctionTok{PredictParams}\NormalTok{())}
+  
+
+\NormalTok{featureSets }\OtherTok{=} \ConstantTok{NULL}
+\NormalTok{metaFeatures }\OtherTok{=} \ConstantTok{NULL}
+\NormalTok{datasetName }\OtherTok{=} \StringTok{"Test Data"}
+
+
+\NormalTok{classificationName }\OtherTok{=} \StringTok{"Easy{-}Hard"}
+
+\NormalTok{training }\OtherTok{=} \DecValTok{1}\SpecialCharTok{:}\DecValTok{10}
+\NormalTok{testing }\OtherTok{=} \DecValTok{1}\SpecialCharTok{:}\DecValTok{10}
+
+\CommentTok{\#Cross Validation inputs}
+\NormalTok{k}\OtherTok{=}\DecValTok{5}
+\NormalTok{permutations}\OtherTok{=}\DecValTok{100}
+\NormalTok{rsmp}\OtherTok{=}\DecValTok{20}
+
+
+\NormalTok{seed}\OtherTok{=}\DecValTok{1}
+\NormalTok{verbose}\OtherTok{=}\DecValTok{3}
+  
+\DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{main-code}{%
+\subsection{Main Code}\label{main-code}}
+
+\begin{verbatim}
+## [1] "(1) RNA1-RNA2-RNA3: <RNA1>"
+\end{verbatim}
+
+\begin{verbatim}
+## Warning: package 'sparsediscrim' was built under R version 4.0.5
+\end{verbatim}
+
+\begin{verbatim}
+## [1] "    Total = 10"
+## [1] "    Processed = 10 (3 retained, 7 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(1) RNA1-RNA2-RNA3: <RNA2>"
+## [1] "    Total = 7"
+## [1] "    Processed = 7 (3 retained, 4 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(1) RNA1-RNA2-RNA3: <RNA3>"
+## [1] "    Total = 4"
+## [1] "    Processed = 4 (4 retained, 0 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(2) RNA1-RNA3-RNA2: <RNA1>"
+## [1] "    Total = 10"
+## [1] "    Processed = 10 (3 retained, 7 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(2) RNA1-RNA3-RNA2: <RNA3>"
+## [1] "    Total = 7"
+## [1] "    Processed = 7 (3 retained, 4 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(2) RNA1-RNA3-RNA2: <RNA2>"
+## [1] "    Total = 4"
+## [1] "    Processed = 4 (4 retained, 0 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(3) RNA2-RNA1-RNA3: <RNA2>"
+## [1] "    Total = 10"
+## [1] "    Processed = 10 (3 retained, 7 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(3) RNA2-RNA1-RNA3: <RNA1>"
+## [1] "    Total = 7"
+## [1] "    Processed = 7 (3 retained, 4 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(3) RNA2-RNA1-RNA3: <RNA3>"
+## [1] "    Total = 4"
+## [1] "    Processed = 4 (4 retained, 0 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(4) RNA2-RNA3-RNA1: <RNA2>"
+## [1] "    Total = 10"
+## [1] "    Processed = 10 (3 retained, 7 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(4) RNA2-RNA3-RNA1: <RNA3>"
+## [1] "    Total = 7"
+## [1] "    Processed = 7 (3 retained, 4 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(4) RNA2-RNA3-RNA1: <RNA1>"
+## [1] "    Total = 4"
+## [1] "    Processed = 4 (4 retained, 0 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(5) RNA3-RNA1-RNA2: <RNA3>"
+## [1] "    Total = 10"
+## [1] "    Processed = 10 (3 retained, 7 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(5) RNA3-RNA1-RNA2: <RNA1>"
+## [1] "    Total = 7"
+## [1] "    Processed = 7 (3 retained, 4 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(5) RNA3-RNA1-RNA2: <RNA2>"
+## [1] "    Total = 4"
+## [1] "    Processed = 4 (4 retained, 0 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(6) RNA3-RNA2-RNA1: <RNA3>"
+## [1] "    Total = 10"
+## [1] "    Processed = 10 (3 retained, 7 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(6) RNA3-RNA2-RNA1: <RNA2>"
+## [1] "    Total = 7"
+## [1] "    Processed = 7 (3 retained, 4 to progress to next tier)"
+## [1] "    Not processed = 0"
+## [1] "(6) RNA3-RNA2-RNA1: <RNA1>"
+## [1] "    Total = 4"
+## [1] "    Processed = 4 (4 retained, 0 to progress to next tier)"
+## [1] "    Not processed = 0"
+\end{verbatim}
+
+\hypertarget{plots}{%
+\subsection{Plots}\label{plots}}
+
+Updates
+
+\begin{itemize}
+\tightlist
+\item
+  Accuracy instead of Error
+\item
+  Changes axis on bubble plot (from y = retention to y = cost)
+\end{itemize}
+
+New plots
+
+\begin{itemize}
+\tightlist
+\item
+  Tree plot with numbers of samples progressed represented as edge lines
+\end{itemize}
+
+To implement
+
+\begin{itemize}
+\tightlist
+\item
+  Table -\textgreater{} remove proportion retained but keep total
+  accuracy?
+\item
+  Tree plot colouring
+\end{itemize}
+
+\begin{verbatim}
+## PhantomJS not found. You can install it with webshot::install_phantomjs(). If it is installed, please make sure the phantomjs executable can be found via the PATH variable.
+\end{verbatim}
+
+\includegraphics{MTDT_GENERAL_OUTPUT_files/figure-latex/unnamed-chunk-3-2.pdf}
+
+\begin{verbatim}
+##                     levelName counter
+## 1 RNA1                             NA
+## 2  ¦--Retained (RNA1)               3
+## 3  °--To progress (RNA1)            7
+## 4      ¦--Retained (RNA2)           3
+## 5      °--To progress (RNA2)        4
+## 6          °--Retained (RNA3)       4
+\end{verbatim}
+
+\includegraphics{MTDT_GENERAL_OUTPUT_files/figure-latex/unnamed-chunk-3-3.pdf}
+
+\begin{verbatim}
+##                     levelName counter
+## 1 RNA1                             NA
+## 2  ¦--Retained (RNA1)               3
+## 3  °--To progress (RNA1)            7
+## 4      ¦--Retained (RNA3)           3
+## 5      °--To progress (RNA3)        4
+## 6          °--Retained (RNA2)       4
+\end{verbatim}
+
+\includegraphics{MTDT_GENERAL_OUTPUT_files/figure-latex/unnamed-chunk-3-4.pdf}
+
+\begin{verbatim}
+##                     levelName counter
+## 1 RNA2                             NA
+## 2  ¦--Retained (RNA2)               3
+## 3  °--To progress (RNA2)            7
+## 4      ¦--Retained (RNA1)           3
+## 5      °--To progress (RNA1)        4
+## 6          °--Retained (RNA3)       4
+\end{verbatim}
+
+\includegraphics{MTDT_GENERAL_OUTPUT_files/figure-latex/unnamed-chunk-3-5.pdf}
+
+\begin{verbatim}
+##                     levelName counter
+## 1 RNA2                             NA
+## 2  ¦--Retained (RNA2)               3
+## 3  °--To progress (RNA2)            7
+## 4      ¦--Retained (RNA3)           3
+## 5      °--To progress (RNA3)        4
+## 6          °--Retained (RNA1)       4
+\end{verbatim}
+
+\includegraphics{MTDT_GENERAL_OUTPUT_files/figure-latex/unnamed-chunk-3-6.pdf}
+
+\begin{verbatim}
+##                     levelName counter
+## 1 RNA3                             NA
+## 2  ¦--Retained (RNA3)               3
+## 3  °--To progress (RNA3)            7
+## 4      ¦--Retained (RNA1)           3
+## 5      °--To progress (RNA1)        4
+## 6          °--Retained (RNA2)       4
+\end{verbatim}
+
+\includegraphics{MTDT_GENERAL_OUTPUT_files/figure-latex/unnamed-chunk-3-7.pdf}
+
+\begin{verbatim}
+##                     levelName counter
+## 1 RNA3                             NA
+## 2  ¦--Retained (RNA3)               3
+## 3  °--To progress (RNA3)            7
+## 4      ¦--Retained (RNA2)           3
+## 5      °--To progress (RNA2)        4
+## 6          °--Retained (RNA1)       4
+\end{verbatim}
+
+\includegraphics{MTDT_GENERAL_OUTPUT_files/figure-latex/unnamed-chunk-3-8.pdf}
+
+Note that the \texttt{echo\ =\ FALSE} parameter was added to the code
+chunk to prevent printing of the R code that generated the plot.
+
+\end{document}

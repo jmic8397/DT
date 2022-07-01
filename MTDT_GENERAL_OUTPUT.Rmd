@@ -1,0 +1,560 @@
+---
+title: "MTDT_Function_ClassifyR"
+author: "Andy Wang & Jamie Mickaill"
+date: "01/02/2022"
+output: html_document
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+sessionInfo()
+
+library(MultiAssayExperiment)
+library(tidyverse)
+library(magrittr)
+library(rms)
+library(Hmisc)
+library(skimr)
+library(knitr)
+library(hardhat)
+library(caret)
+library(grid)
+library(gridExtra)
+library(tictoc)
+library(ClassifyR)
+library(data.tree)
+library(DiagrammeR)
+library(DiagrammeRsvg)
+library(rsvg)
+library(knitr)
+library(png)
+library(magrittr)
+library(DT)
+
+tictoc::tic()
+
+setwd("C:/Users/jamie/Desktop/UniY3S1/DataScience/DENR3901/Prereadings/NewMelanomaData")
+load("./melanomaAssaysNorm.RData")
+setwd("C:/Users/jamie/Desktop/UniY3S1/DataScience/DENR3901/Prereadings/MTDT2021Version")
+source("./MTDT-0-fxn-SSER.R")
+source("./MTDT-0-fxn-GeneralMTDT.R")
+source("./MTDT-0-fxn-MTblock.R")
+source("./MTDT-0-fxn-others.R")
+source("./MTDT-0-fxn-MTDT.R")
+source("./MTDT-1-datachecking.R")
+
+
+# names(melanomaAssaysNorm)[3]
+#   
+#   
+# colnames(colData(melanomaAssaysNorm))
+# melanomaAssaysNorm@ExperimentList
+# 
+# results <- runTests(melanomaAssaysNorm, targets = names(melanomaAssaysNorm)[3], outcomesColumns = "class1vs4years")
+# 
+# results <- calcCVperformance(results)
+
+results <- runTests(melanomaAssaysNorm, targets = "NanoString", outcomesColumns = "class1vs4years")
+print(results)
+
+show(results)
+
+names(melanomaAssaysNorm)
+
+results <- runTests(melanomaAssaysNorm, targets = "NanoString", outcomesColumns = "class1vs4years")
+performance = calcCVperformance(results)
+error = performance(performance, "Standard Error")
+
+predictions = predictions(performance)
+predictions
+
+
+error
+
+rownames(colData(melanomaAssaysNorm))
+
+
+# 
+# melanomaAssaysNorm$Person_ID
+#   #*****************************************************************************
+# 
+#   #This gives estimate error rate
+# 
+#   #This gives actual predictions
+#   show(performance)
+#   performance(performance)
+#   tunedParameters(performance)
+#   names(performance)
+#   predictions(performance)
+#   predictions(performance)
+#   predict = predictions(performance)
+#   predict$class
+# 
+#   dataset$class
+# 
+# 
+#         print(predict)
+#       predict <- as.data.frame(predict)
+#       predict = predict %>%  dplyr::mutate(y.good = ifelse(class=="Good", 1, 0))
+# 
+# 
+
+```
+
+# Multi Tier Decision Tree for Clinical Diagnostics
+
+This program aims to use a sequential, machine learning approach to build a forest of multi-level clinical 
+diagnostic trees with multi-omics data. This will allow for comparison of the cost and accuracy of different sequences of predictive models. With this information, we hope to enable better informed decisions of diagnostic processes.
+
+At each node of the tree, a machine learning model is used to establish the sample specific accuracy of health outcome predictions for a single layer of the multi-omics data (e.g. how accurate is the prediction for a single individual based on their histology data?). If the prediction can not be made with sufficient accuracy, the individual will progress to the next level where an alternative model and layer of the omics data will be used. Currently each layer is analysed seperately, such that we have analysis of multiple single-omics datasets (ensemble learning to be implemented ?) 
+
+
+# Demonstration of MTDT function for ClassifyR
+
+Below we assign some example runTest() parameters, and pass it to our GeneralMTDT() function.
+We then generate plots with the produced data.
+
+
+## Mock Inputs
+
+Below is where the user can modify parameters of ClassifyR's runTest/s() function
+
+
+New features include
+
+* First tier fixing (e.g. Clinical)
+
+* Final tier retain-all
+
+* Multiple Accuracy-threshold outputs (Repetition of tests and plots)
+
+* Weight function parameter input (Assign a weight to each tier e.g. to represent financial cost or time cost)
+
+
+To be implemented
+
+* Adjustable training params
+
+* Parameter bounds (E.g. only display sequences < $x)
+
+* Add Parameters (E.g. time, risk)
+
+* Extensive error checking of inputs
+
+* runTest() or runTests()
+
+
+
+```{r}
+  
+#Mock Inputs
+  
+###############################################################################
+
+#Choose the MultiAssayExperiment for performing classification   
+#Remove all NAs!
+MultiAssayExperiment = melanomaAssaysNorm
+
+
+
+#Properties for weighting 
+#(E.g. # of individuals retained or total cost of all tests performed at a given tier)
+properties = c("TSA.retained", "Cost.Total")
+
+#Weights for properties 
+#(E.g. evaluation of best tier defined by relative error * -0.5 + relative cost * -0.5 )
+weights = c(0.5,-0.5)
+
+#To be updated: 
+#Currently weighting function is incorrect: (scaled(P1) * W1) + (scaled(P1) * W2) + (scaled(PN) * WN) 
+
+#modelList -> which classifier for each tier? 
+modelList = list("fisherDiscriminant", "fisherDiscriminant", "fisherDiscriminant", "fisherDiscriminant", "fisherDiscriminant" ) 
+
+#Sampling methods for each tier - Not sure if this will be required for runTests*** 
+rsmpList = list("rcv", "rcv", "boot")
+
+#List of tier names
+#Should default to names(measurements)) + clinical for tiers
+#For melanoma example: longRNA has too many features, we just want a single iTRAQ****
+tierList = c( "microRNA"  ,    "NanoString"   , "iTRAQabsolute") 
+
+#Sample specific error cutoffs 
+#(E.g. x | if the sample specific error of cross validated prediction is > x, the sample will 'progress' to the next tier. Lower cutoff = higher retention generally)
+ssercutoffList= list(c(0.4, 0.4, 0.4),c(0.45, 0.45, 0.45)) # -> to be implemented for multi-threshold analysis
+
+#Tier costs (e.g. price of performing test for an individual)
+tierUnitCosts = c(100, 500, 1000)
+
+#Which tier to fix as first in Tree? (If any)
+# e.g. fixedTier = "Clinical"
+fixedTier = NULL
+
+#Model parameters?
+# selParams <- SelectParams(featureSelection = differentMeansSelection, selectionName = "Difference in Means",
+#                             resubstituteParams = ResubstituteParams(1:10, "balanced error", "lower"))
+selParams <- 0
+
+#runtest() or runtests()? 
+runtestorruntests = "runtests"
+
+#name of classifier/classes column in dataset
+classes = "class1vs4years"
+
+#other params
+params = list(SelectParams(), TrainParams(), PredictParams())
+
+#leave k out params
+leave = 2
+
+#what percentage for training dataset (Not currently used)
+percent=25
+
+#Minimum overlap
+minimumOverlapPercent = 80
+
+#Validation method
+validation = c("permute", "leaveOut", "fold")
+
+#parallelization info
+parallelParams = bpparam()
+
+#EasyHard Params
+# easyDatasetID = "clinical"
+# hardDatasetID = names(MultiAssayExperiment)[1]
+# easyClassifierParams = list(minCardinality = 2, minPurity = 0.9)
+# hardClassifierParams = list(selParams, TrainParams(), PredictParams())
+# 
+easyDatasetID = 0
+hardDatasetID = 0
+easyClassifierParams = 0
+hardClassifierParams = 0
+
+
+
+featureSets = NULL
+metaFeatures = NULL
+datasetName = "Test Data"
+
+
+classificationName = "Easy-Hard"
+
+training = 1:10
+testing = 1:10
+
+#Cross Validation inputs
+k=5
+permutations=100
+rsmp=20
+
+
+seed=1
+verbose=3
+  
+###############################################################################
+
+
+
+```
+
+## Main Code
+
+
+```{r, echo=FALSE}
+
+#Call general function with all inputs needed for ClassifyR
+
+source("./MTDT-0-fxn-SSER.R")
+source("./MTDT-0-fxn-GeneralMTDT.R")
+source("./MTDT-0-fxn-MTblock.R")
+source("./MTDT-0-fxn-others.R")
+source("./MTDT-0-fxn-MTDT.R")
+source("./MTDT-1-datachecking.R")
+
+  #filter NA's
+  classColumn = grep(classes, colnames(colData(MultiAssayExperiment)))
+  retainList = !is.na(colData(MultiAssayExperiment)[classColumn])
+  MultiAssayExperiment = MultiAssayExperiment[,retainList & !is.na(retainList),]
+  
+  #Subset specified experiments from tierList (e.g. we only want to use 2 assays for now)
+  MultiAssayExperiment = MultiAssayExperiment[,,tierList]
+  
+  
+  MTDTsummaries = list()
+  MTDTresultsList = list()
+
+  for(cutoff in 1:length(ssercutoffList)){
+    
+    MTDTresults = GeneralMTDT(MultiAssayExperiment,
+                          modelList,
+                                 rsmpList,
+                                 tierList,
+                                 fixedTier,
+                                 
+                          ssercutoffList[[cutoff]],
+                          tierUnitCosts,
+                          
+                          costBound=0, objective=NULL,
+                      
+                         resubstituteParams,
+                         runtestorruntests ,
+                         classes,
+                         params ,
+                         leave ,
+                         percent,
+                         minimumOverlapPercent,
+                         validation,
+                         parallelParams,
+                         easyDatasetID,
+                         hardDatasetID,
+                         featureSets,
+                         metaFeatures,
+                         datasetName,
+                         classificationName,
+                         easyClassifierParams,
+                         hardClassifierParams,
+                         k, permutations, rsmp,
+                         seed,verbose)
+    
+    MTDTresultsList = append(MTDTresultsList, list(MTDTresults))
+    
+    MTDTsummaries = append(MTDTsummaries,list(MTDT.ClassifyR.cost.summary(MTDTresults, tierUnitCosts)))
+  }
+  
+
+
+```
+
+## Plots
+
+Updates
+
+* Accuracy instead of Error
+* Changes axis on bubble plot (from y = retention to y = cost)
+* Concentric bubbles to represent tier retention proportions
+* Table -> remove proportion retained but keep total accuracy?
+
+New plots
+
+* Tree plot with numbers of samples progressed represented on edge lines
+
+
+
+```{r   , echo=FALSE}
+
+#Bubble plots
+
+for(results in 1:length(MTDTsummaries)){
+  
+  MTDTsummary = MTDTsummaries[[results]]
+  MTDTresults = MTDTresultsList[[results]]
+  
+
+    cap1 = paste("Bubble Plot ",results,", Cutoff:", MTDTresults$ssercutoffList[[1]], sep = " ", collapse = NULL)
+
+
+#Modify for multiple cutoffs
+#if multiple cutoffs...
+
+  tierSequence = MTDTsummary$TSER.summary$Tier.Sequence
+
+  
+  # Scatterplot with total model error
+  theme_set(theme_bw())  # pre-set the bw theme.
+  g <- ggplot(MTDTsummary$TSER.summary, aes(((MTDTsummary$TSER.summary$TSA.retained * MTDTsummary$TSER.summary$N.retained ) + (MTDTsummary$TSER.summary$TSA.notretained * MTDTsummary$TSER.summary$N.notretained))/MTDTsummary$TSER.summary$N.Total , MTDTsummary$TSER.summary$Cost.Total)) + 
+    labs(subtitle="Accuracy and Cost", title=cap1, x = "Total Sequence Accuracy", y = "Total Cost")
+  # g = g + geom_point(aes(size = N.Total, colour = N.Total)) +  scale_size(range = c(10,30))
+  
+      nperms = dim(MTDTresults$myperms)[1]
+
+  
+        for(nperm in 1:length(nperms)){
+  
+        treeRoot = MTDTsummary$Plots.Tree[[nperm]]
+        print(treeRoot,"counter","tierOrder")
+        df = ToDataFrameTree(treeRoot,"counter", "tierOrder")
+        
+        df = df %>% filter(grepl('^.*Retained',levelName))
+        # df = df %>% filter(tierOrder != max(tierOrder))
+        df = df %>% mutate(counterSum = cumsum(counter))
+        
+        for(i in 1:length(df$levelName)){
+        # print(df$counterSum[i])
+          g = g + geom_point(aes_(x=((MTDTsummary$TSER.summary$TSA.retained * MTDTsummary$TSER.summary$N.retained ) + (MTDTsummary$TSER.summary$TSA.notretained * MTDTsummary$TSER.summary$N.notretained))/MTDTsummary$TSER.summary$N.Total , y= MTDTsummary$TSER.summary$Cost.Total, size = df$counterSum[i], colour = df$counterSum[i] ),alpha = 0.5) +geom_text(label = MTDTsummary$TSER.summary$Tier.Sequence, hjust=0, vjust=0)
+        }
+        }
+      g = g +  scale_size(range = c(10,30))
+  
+  #col = strata?
+print(g)
+  #add extra layer of jitter for each tier??
+}
+
+```
+
+
+```{r, echo=FALSE}
+
+#Table
+
+  TSUM = MTDTsummaries[[1]]$TSER.summary
+    nperms = dim(MTDTresults$myperms)[1]
+
+
+#combine threshold tables
+if(length(MTDTsummaries) > 1){
+  
+  for(results in 2:length(MTDTsummaries)){
+  
+    #Merge threshold tables
+      
+    TSUM = rbind(TSUM,MTDTsummaries[[results]]$TSER.summary)
+  
+  }
+}
+
+##########################
+
+#weight function
+    #adds a column for each property which holds the properties individual contribution to the total
+
+#Scales col vals and multiplies by weight
+getWeights <- function(data,properties, weights){
+
+      originalLength = length(data)
+      sum = 0
+      
+      #for each property and weight, create a new column corresponding to its contribution to the total weight
+      for(i in 1:length(properties)){
+        colname = paste0(properties[i],".weight")
+        data[colname] <- ((scale(data[properties[i]])) * weights[i]) 
+      }
+      
+      #sum up all new cols
+      data = data %>% mutate(Weight = rowSums(.[(originalLength+1):length(data)]))
+      
+      
+      return(data)
+    
+  }
+
+
+
+TSUM = getWeights(TSUM,properties,weights)
+
+########################
+  
+  tab = TSUM %>% select(Tier.Sequence, TSA.retained, N.Total, Threshold,Cost.byTier,Cost.Total, Weight) %>%
+    DT::datatable(option=list(
+      columnDefs=list(list(className="dt-center", targets=list(1,6))),
+      pageLength=20) ) %>% 
+    DT::formatRound(columns=c(2, 3, 6), digits=2)
+  
+print(tab)
+tab
+```
+
+```{r results='asis'  , echo=FALSE}
+
+for(results in 1:length(MTDTsummaries)){
+  
+  MTDTsummary = MTDTsummaries[[results]]
+  MTDTresults = MTDTresultsList[[results]]
+  
+
+    
+    nperms = dim(MTDTresults$myperms)[1]
+
+      
+    for (nperm in 1:nperms){
+    
+      
+      #Print tree plot
+      
+      treeRoot = MTDTsummary$Plots.Tree[[nperm]]
+
+      # plot(treeRoot)
+      
+
+      
+      ############################
+      
+      n = nrow(colData(MultiAssayExperiment))
+      
+     
+    
+      
+      #strat plot of all tiers
+      p1 = MTDTsummary$Plots.strat.prop[[nperm]] +
+        theme(plot.title=element_text(face="bold"))
+      #Tier specific error box plots
+      p2 = MTDTsummary$Plots.TSERcutoff[[nperm]][[1]]
+      p3 = MTDTsummary$Plots.TSERcutoff[[nperm]][[2]] + ylab("")
+      p4 = MTDTsummary$Plots.TSERcutoff[[nperm]][[3]] + ylab("")
+      #overall error
+      p5 = MTDTsummary$Plots.TSER[[nperm]] + 
+        ggtitle("Overall") + ylab("") +
+        theme(plot.title=element_text(hjust=0.5, face="bold"))
+      
+      
+      
+        #MTDTsummary$Plots.Tree[[nperm]]
+      
+      gridExtra::grid.arrange(
+        grobs = list( p1, p2, p3,p4,  p5),
+        layout_matrix = rbind(c(1,1,1,1),
+                              c(1,1,1,1),
+                              c(2,3,4,5),
+                              c(2,3,4,5),
+                              c(2,3,4,5))
+      )
+      
+      
+      #Tree Graph
+      ############################################
+      
+       GetEdgeLabel <- function(node) {
+      if (!node$isRoot ) {
+        label = paste0( ((node$counter/n)*100),  "% (", node$counter, ")")
+      } else {
+        label = node$name
+      }
+      return (label)
+        
+      }
+      
+    
+      GetFillColour <- function(node){
+        if(!is.null(node$tier)){
+              name = node$tier
+    
+        name = name %>% charToRaw %>% as.numeric %>%paste(collapse = '')
+        
+        return(paste0('#',((strtoi(name)*255)%%100),'FF89'))}
+        else{
+          return("LightBlue")
+        }
+    
+    
+      }
+    
+      SetGraphStyle(treeRoot, rankdir = "LR")
+      SetEdgeStyle(treeRoot, fontname = 'helvetica', label = GetEdgeLabel)
+      SetNodeStyle(treeRoot, style="filled", shape = "box", fillcolor = GetFillColour, fontname = 'helvetica')
+      Graph = ToDiagrammeRGraph(treeRoot)
+      graphname = paste0("graph",nperm, ".png")
+      export_graph(Graph, file_name = graphname, file_type = "png")
+      graphpath = paste0(getwd(), "/",graphname)
+      cat("![](",graphname,")")
+      
+
+      }
+
+  }
+
+
+
+```
+
