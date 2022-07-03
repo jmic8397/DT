@@ -24,6 +24,11 @@ sser_classifyR <- function(model=NULL, MAEobject=NULL, method=rsmpmethod, k=k, t
   
 
   #removing NA's
+  
+  # NAList = setdiff(is.na((experiments(MAEobject)[z]),is.na((experiments(MAEobject)[z]))))
+            
+  
+  
   # dataAsFrame = as.data.frame(dataset)
   # data.ori = dataAsFrame
   # ID.ori = data.ori[, 1] %>% as_vector
@@ -100,14 +105,18 @@ sser_classifyR <- function(model=NULL, MAEobject=NULL, method=rsmpmethod, k=k, t
 
       DMresults <- runTests(MAEobject, target=names(MAEobject)[z], outcomesColumns=classes, crossValParams = cv, modellingParams = mp)
       
-      
+      # 
       # show(DMresults)
       # print(predictions(DMresults))
-      
+      # 
       # This gives estimate error rate
       performance = calcCVperformance(DMresults, "Sample Error")
       error = performance(performance)
+      
+      # print(rownames(colData(MAEobject)))
       # print(error)
+      
+      
       
       #Run prediction with classifyR
       # 
@@ -240,6 +249,14 @@ sser_classifyR <- function(model=NULL, MAEobject=NULL, method=rsmpmethod, k=k, t
   #                 phatrsmp.lower=NA, phatrsmp.upper=NA, absdiffphatphatrsmp=NA) %>% 
   #   dplyr::arrange(!!ID_nm, rpt)
       
+      
+      #find NA's
+      SampleIDComplete = names(error$`Sample Error`)
+      SampleIDTotal = rownames(colData(MAEobject))
+      ID.removed = setdiff(SampleIDTotal,SampleIDComplete )
+      # print(ID.removed)
+      
+      #construct Table
       SampleID = names(error$`Sample Error`)
       sser = unname(error$`Sample Error`)
       errorTable = tibble(SampleID,sser)
@@ -254,7 +271,7 @@ sser_classifyR <- function(model=NULL, MAEobject=NULL, method=rsmpmethod, k=k, t
   }
   
   return(list(rsmp_method=rsmp_method,
-              
+              removed = ID.removed,
               SSER=errorTable, 
               phat_rsmp=phat_rsmp))
 }
@@ -337,7 +354,7 @@ tser <- function(SSER=NULL, col_name=NULL){
       # dplyr::select(tser)
     
     
-    print(tser)
+    # print(tser)
     # if (is.error(with(df.sser, rms::val.prob(phat, !!y_nm, pl=F)))) {
     #   val = rep(NA, 18)
     # } else {
@@ -384,7 +401,11 @@ tser <- function(SSER=NULL, col_name=NULL){
 tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
   
   library(tidyverse)
-  # Removed = SSER$removed
+  Removed = as.data.frame(SSER$removed)
+  print(Removed)
+  # print(class(Removed))
+  # print(class(SSER$SSER))
+  # as.table(Removed)
   # Removed = none()
   # phat_rsmp = SSER$phat_rsmp
   SSER=SSER$SSER
@@ -399,12 +420,17 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
   #   by=IDnm
   #   )
   
-  print(SSER)
+  # print(SSER)
   
   id.retained = SSER %>% 
     dplyr::filter({{col_name}}<=mycutoff) %>% 
     dplyr::select(SampleID) %>%
     as_vector() %>% unique()
+  
+  #if finalTier of tree, add all samples to retained
+  if(mycutoff==1){
+    id.retained = c(id.retained,as_vector(Removed))
+  }
 
   
   id.toprogress = setdiff(
@@ -454,8 +480,8 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
       dplyr::filter(SampleID %in% id.toprogress) %>% 
       dplyr::select(SampleID, sser) %>% 
       dplyr::mutate(strata = "To progress"),
-    # Removed %>%
-    #   dplyr::mutate(strata = "Not processed")
+    Removed %>%
+      dplyr::mutate(strata = "Not processed")
     ) %>%
     dplyr::mutate(strata=factor(strata, levels=c("Retained", "To progress", "Not processed")))
   

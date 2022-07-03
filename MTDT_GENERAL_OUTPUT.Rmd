@@ -58,26 +58,48 @@ source("./MTDT-1-datachecking.R")
 
 
 #testing area
+# 
+# results <- runTests(melanomaAssaysNorm, targets = "NanoString", outcomesColumns = "class1vs4years")
+# print(results)
+# 
+# show(results)
+# 
+# loginc = is.na(experiments(melanomaAssaysNorm)[1])
+# 
+# melanomaAssaysNorm
+# rownames(colData(completeCases)) = melanomaAssaysNorm[,complete.cases(melanomaAssaysNorm[,,4]),]
+# 
+# complete.cases(melanomaAssaysNorm)
+# colData(melanomaAssaysNorm[,,])
+# 
+# complete.cases(melanomaAssaysNorm[,,1])
+# 
+#   NALIST = (rownames(colData(melanomaAssaysNorm[complete.cases(melanomaAssaysNorm[,,4]),,])) %in% rownames(colData(melanomaAssaysNorm)))
 
-results <- runTests(melanomaAssaysNorm, targets = "NanoString", outcomesColumns = "class1vs4years")
-print(results)
 
-show(results)
+# melanomaAssaysNorm
+# results <- runTests(melanomaAssaysNorm, targets = "NanoString", outcomesColumns = "class1vs4years")
+# performance = calcCVperformance(results)
+# error = performance(performance, "Standard Error")
+# 
+# predictions = predictions(performance)
+# predictions
+# 
+# 
+# error
+# 
+# rownames(colData(melanomaAssaysNorm))
 
-names(melanomaAssaysNorm)
+# remove = list("132", "108")
+# people = rownames(colData(melanomaAssaysNorm))
+# retainedpp = !(people %in%  remove)
+# people
+# peopleNew = melanomaAssaysNorm[,retainedpp,]
+# rownames(colData(peopleNew))
 
-results <- runTests(melanomaAssaysNorm, targets = "NanoString", outcomesColumns = "class1vs4years")
-performance = calcCVperformance(results)
-error = performance(performance, "Standard Error")
-
-predictions = predictions(performance)
-predictions
-
-
-error
-
-rownames(colData(melanomaAssaysNorm))
-
+# Removed = as.data.frame(SSER$removed)
+# 
+# 
 
 # 
 # melanomaAssaysNorm$Person_ID
@@ -331,7 +353,9 @@ source("./MTDT-1-datachecking.R")
     
     MTDTresultsList = append(MTDTresultsList, list(MTDTresults))
     
-    MTDTsummaries = append(MTDTsummaries,list(MTDT.ClassifyR.cost.summary(MTDTresults, tierUnitCosts)))
+    costSummary = MTDT.ClassifyR.cost.summary(MTDTresults, tierUnitCosts)
+    
+    MTDTsummaries = append(MTDTsummaries,list(costSummary))
   }
   
 
@@ -528,7 +552,8 @@ for(results in 1:length(MTDTsummaries)){
       
        GetEdgeLabel <- function(node) {
       if (!node$isRoot ) {
-        label = paste0( ((node$counter/n)*100),  "% (", node$counter, ")")
+        val = round((node$counter/n)*100,3)
+        label = paste0( (val),  "% (", node$counter, ")")
       } else {
         label = node$name
       }
@@ -553,7 +578,9 @@ for(results in 1:length(MTDTsummaries)){
     
       SetGraphStyle(treeRoot, rankdir = "LR")
       SetEdgeStyle(treeRoot, fontname = 'helvetica', label = GetEdgeLabel)
-      SetNodeStyle(treeRoot, style="filled", shape = "box", fillcolor = GetFillColour, fontname = 'helvetica')
+      # SetNodeStyle(treeRoot, style="filled", shape = "box", fillcolor = GetFillColour, fontname = 'helvetica')
+      SetNodeStyle(treeRoot, style="filled", shape = "box", fillcolor = "LightBlue", fontname = 'helvetica')
+
       Graph = ToDiagrammeRGraph(treeRoot)
       graphname = paste0("graph",nperm, ".png")
       export_graph(Graph, file_name = graphname, file_type = "png")

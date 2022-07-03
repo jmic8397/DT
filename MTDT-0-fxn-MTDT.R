@@ -93,7 +93,7 @@ MTDT.algmClassifyR <-   function(MAEobject,
       MTunits = list()
       
       #create list for # retained for this permutation
-      id.retained = NULL
+      id.retained = list()
       
       #create sequence for current tier
       tierseq = NULL
@@ -156,26 +156,23 @@ MTDT.algmClassifyR <-   function(MAEobject,
   
         # print(MAEobject$Person_ID)
         
-        #subsetting MAE removing all retained
-        MAEdataAsFrame = as.data.frame(colData(MAEobject))
+        # #subsetting MAE removing all retained
+        # MAEdataAsFrame = as.data.frame(colData(MAEobject))
+        # 
+        # 
+        # id.retained = list()
+        # 
         
-        
-        id.retained = list()
-        
+        #Subsetting NA's
         MAEwithoutRetained = MAEobject
+        retainList = unlist(id.retained)
+        retainListLogical = !(rownames(colData(MAEwithoutRetained)) %in% retainList )
         
         if(length(id.retained)>0){
-          for(person in 1:length(id.retained)){
-            retainList = MAEwithoutRetained$Person_ID != id.retained[person]
-            # print(retainList)
-            MAEwithoutRetained = MAEwithoutRetained[,retainList & !is.na(retainList),]
-          }
+            # print("SUBSETTING")
+            MAEwithoutRetained = MAEwithoutRetained[,retainListLogical ,]
         }
-        # 
-        # print(colData(MAEobject))
-        # print(colData(MAEwithoutRetained))
         
-
         
         #Create tierstring
         #e.g. (1) Clin-Histo-Nano: <Clin>
@@ -183,19 +180,6 @@ MTDT.algmClassifyR <-   function(MAEobject,
         # print(paste0("nperms = ", nperm, " ; ntiers = ", ntier, " ; tier = ", tier)) #############<-------------------------
         
         
-        #ok what do we need to modify MTBLOCK function signature to cater to ClassifyR
-        #I think we also need a training and test set?
-        # training = (1:ncol(colData(MAEobject))) %% 2 == 0
-        # testing = (1:ncol(colData(MAEobject))) %% 2 != 0
-        
-        
-        # (measurements,       modelList,       rsmpList,       tierList,       fixedTier,       ssercutoffList,
-        #         runtestorruntests,classes,  params,leave,percent,  resubstituteParams,     minimumOverlapPercent,       validation,
-        #  parallelParams,        easyDatasetID ,       hardDatasetID,       featureSets ,       metaFeatures ,
-        #  datasetName ,       classificationName ,   training, testing)
-        # 
-        
-        #dataset <- MultiAssayExperiment(experiments(measurements), data)
 
         #pass model and data to MTblock which returns retained status of current sequence layer
         
@@ -212,7 +196,7 @@ MTDT.algmClassifyR <-   function(MAEobject,
 
         #retained is now current + new retained
         id.retained = c(id.retained, MTunits[[ntier]]$id$id.retained)
-        
+        # print(length(id.retained))
 
         retained = MTunits[[ntier]]$id$id.retained %>% unique() %>% length()
         toprogress = MTunits[[ntier]]$id$id.toprogress %>% unique() %>% length()
@@ -690,19 +674,19 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
 
       
       
-      TSER.retained$class = TSER.retained$class %>% as.factor() %>% as.numeric()-1
-      MTlist[[nperm]][[ntier]]$SSER$phat_rsmp$class = MTlist[[nperm]][[ntier]]$SSER$phat_rsmp$class %>% as.factor() %>% as.numeric()-1
+      # TSER.retained$class = TSER.retained$class %>% as.factor() %>% as.numeric()-1
+      # MTlist[[nperm]][[ntier]]$SSER$phat_rsmp$class = MTlist[[nperm]][[ntier]]$SSER$phat_rsmp$class %>% as.factor() %>% as.numeric()-1
       
 
       TSER.retained = dplyr::bind_rows(
         TSER.retained,
-        MTlist[[nperm]][[ntier]]$SSER$phat_rsmp %>% 
-          dplyr::filter(!!ID_nm %in% id.retained)
+        MTlist[[nperm]][[ntier]]$SSER$SSER %>% 
+          dplyr::filter(SampleID %in% id.retained)
       )
       TSER.notretained = dplyr::bind_rows(
         TSER.notretained,
-        MTlist[[nperm]][[ntier]]$SSER$phat_rsmp %>%
-          dplyr::filter(!!ID_nm %in% id.notretained)
+        MTlist[[nperm]][[ntier]]$SSER$SSER  %>%
+          dplyr::filter(SampleID %in% id.notretained)
       )
     }
     
@@ -716,17 +700,17 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
     
 
     ynm = colnames(TSER.retained)[2]
-    y_nm = sym(ynm)
+    y_nm = ynm
   
     
     TSER.overall[[nperm]] = dplyr::bind_rows(
       TSER.retained %>% 
-        dplyr::group_by(rpt) %>% 
-        dplyr::summarise(tser=(1-mean(yhatrsmp==class, na.rm=T))) %>% 
+        # dplyr::group_by(rpt) %>% 
+        dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>% 
         dplyr::mutate(strata=factor("Retained", levels=c("Retained", "Not retained"))),
       TSER.notretained %>% 
-        dplyr::group_by(rpt) %>% 
-        dplyr::summarise(tser=(1-mean(yhatrsmp==class, na.rm=T))) %>% 
+        # dplyr::group_by(rpt) %>% 
+        dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>% 
         dplyr::mutate(strata=factor("Not retained", levels=c("Retained", "Not retained")))
     )
     
@@ -759,11 +743,11 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
         dplyr::filter(strata=="Retained") %>% nrow()
       
       
-      stra$class = stra$class  %>%  as.factor() %>% as.numeric()-1
-      stra$yhat = stra$yhat %>%  as.factor() %>% as.numeric()-1
+      # stra$class = stra$class  %>%  as.factor() %>% as.numeric()-1
+      # stra$yhat = stra$yhat %>%  as.factor() %>% as.numeric()-1
       
-      stra.MTunit$class = stra.MTunit$class %>%  as.factor() %>%as.numeric()-1
-      stra.MTunit$yhat = stra.MTunit$yhat %>% as.factor() %>%as.numeric()-1
+      # stra.MTunit$class = stra.MTunit$class %>%  as.factor() %>%as.numeric()-1
+      # stra.MTunit$yhat = stra.MTunit$yhat %>% as.factor() %>%as.numeric()-1
       
       stra = dplyr::bind_rows(stra,  stra.MTunit)
       
@@ -1048,7 +1032,9 @@ MTDT.ClassifyR.cost.summary <- function(MTDTobject, tierUnitCosts){
              Cost.byTier = str_c(paste0("$", c$cost), collapse="-"),
              Cost.Total=sum(c$cost, na.rm=T))
     )
+    
   }
+  print(Costs)
   
   TSER.summary = MTDTsummary$TSER.summary %>% 
     dplyr::mutate(
