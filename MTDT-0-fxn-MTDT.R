@@ -5,52 +5,27 @@
 #includes all variables needed for advanced runtests
 #Assumes MAE being passed in
 #maybe classificationname should be referenced from modelslist???? ******************
-MTDT.algmClassifyR <-   function(MAEobject,
-                                 modelList,
-                                 rsmpList,
-                                 tierList,
-                                 fixedTier,
-                                 ssercutoffList,
-                                 tierUnitCosts,
-                                 
-                                 resubstituteParams =ResubstituteParams(nFeatures = seq(5, 25, 5),
-                                                                        performanceType = "balanced error",
-                                                                        better = "lower"),
-                                 runtestorruntests = "runtest",
-                                 classes = NULL,
-                                 params = list(SelectParams(), TrainParams(), PredictParams()),
-                                 leave = 2,
-                                 percent=25,
-                                 minimumOverlapPercent = 80,
-                                 validation = c("permute", "leaveOut", "fold"),
-                                 parallelParams = bpparam(),
-                                 
-                                 easyDatasetID = "clinical",
-                                 hardDatasetID = names(dataList)[1],
-                                 featureSets = NULL,
-                                 metaFeatures = NULL,
-                                 datasetName = NULL,
-                                 classificationName = "Easy-Hard Classifier",
-                                 easyClassifierParams = list(minCardinality = 2, minPurity = 0.9),
-                                 hardClassifierParams = list(selParams, TrainParams(), PredictParams()),
-                                 
-                                 k=5, permutations=100, rsmp=100,
+MTDT.algmClassifyR <-   function(MultiAssayExperiment,
+                                 tierList,fixedTier = NULL,
+                                 ssercutoffList,tierUnitCosts = c(100, 500, 1000), 
+                                 performanceType = "Sample Error", runtestorruntests = "runtest",
+                                 classes = NULL, crossValParams = NULL, modellingParams = NULL, 
+                                 characteristics = NULL,
                                  seed=1, verbose=F){
+  
+  
   
   
 
   #how many different datasets
-  nblocks = length(experiments(MAEobject))
+  nblocks = length(experiments(MultiAssayExperiment))
   
-  # print("Nblocks")
-  # print(nblocks)
   
   #returns matrix of permutations of models
   myperms = perm(v=1:nblocks)
   
   
-  #Fix tier if specified
-  
+  #Fix tier if specified (e.g. Clinical first)
   if((!(is.null(fixedTier))) & nblocks>1){
     #adjust perms for clinical as first tier
     for(tier in 1:length(tierList)){
@@ -67,23 +42,16 @@ MTDT.algmClassifyR <-   function(MAEobject,
     }
   }
   
-  # print(myperms)
-  
   MTlist = list()
   
   
   #errorchecking for inputs here
   
-  
-  #The below will be default, need to change function to allow expert user abilities (more inputs basically)
-  
-  
+
   #RuntestS
 
   #OK,  runtests was selected
   #also need alternative function for runtest() (no cv) and runtesteasyhard() ***********************************
-  #we map each layer of the MAE with its model in modelList
-  
   if(runtestorruntests=="runtests"){
     
     #for each permutation (row)
@@ -120,12 +88,7 @@ MTDT.algmClassifyR <-   function(MAEobject,
         #z = which layer of the MAE as per permutations (e.g. 1=clinical, 2=histo, perm 1-2 = clin-histo)
         z = myperms[nperm, ntier]
         
-        
-        #This will be some classificationName e.g. "Different Means"
-        model = modelList[[z]]
-        
-        #Not sure where this maps to the inputs for runtests()
-        rsmpmethod = rsmpList[[z]]
+
         
         #Can probably use names(experiments(measurements)) + clinical for tiers
         tier = tierList[[z]]
@@ -136,35 +99,11 @@ MTDT.algmClassifyR <-   function(MAEobject,
         }
         
         
-        #dont think this is used
-        modelclass = class(model)
-        
-        
         #get the column index of the class from the MAE
         classIndex = grep(classes,colnames(colData(melanomaAssaysNorm)))
         
-        
-        # #Get names of ID and Class columns
-        # #assumes ID first column
-        # IDnm = colData(MAEobject)[1]
-        # ynm = colData(MAEobject)[classIndex]
-        # 
-        # 
-        # #Convert names to symbols?
-        # ID_nm = sym(IDnm)
-        # y_nm = sym(ynm)
-  
-        # print(MAEobject$Person_ID)
-        
-        # #subsetting MAE removing all retained
-        # MAEdataAsFrame = as.data.frame(colData(MAEobject))
-        # 
-        # 
-        # id.retained = list()
-        # 
-        
         #Subsetting NA's
-        MAEwithoutRetained = MAEobject
+        MAEwithoutRetained = MultiAssayExperiment
         retainList = unlist(id.retained)
         retainListLogical = !(rownames(colData(MAEwithoutRetained)) %in% retainList )
         
@@ -173,30 +112,23 @@ MTDT.algmClassifyR <-   function(MAEobject,
             MAEwithoutRetained = MAEwithoutRetained[,retainListLogical ,]
         }
         
-        
         #Create tierstring
         #e.g. (1) Clin-Histo-Nano: <Clin>
         print(paste0("(", nperm, ") ", tierseq, ": <", tier, ">"))
         # print(paste0("nperms = ", nperm, " ; ntiers = ", ntier, " ; tier = ", tier)) #############<-------------------------
         
         
-
         #pass model and data to MTblock which returns retained status of current sequence layer
-        
         MTunits[[ntier]] = MTblockClassifyR(
           data=MAEwithoutRetained, id.retained=id.retained,
-          formula=formula, model=model, method=method, 
-          rsmpmethod=rsmpmethod, k=k, permutations=times, rsmp=rsmp,
           ssercutoff=ssercutoff, tier=tier, plotlabel=tier,
-          seed=seed, verbose=verbose, runtestorruntests=runtestorruntests,classes,  params,leave,percent,  resubstituteParams,     minimumOverlapPercent,       validation,
-          parallelParams,        easyDatasetID ,       hardDatasetID,       featureSets ,       metaFeatures ,
-          datasetName ,       classificationName ,   training, testing, finalTier, classIndex, z)
+          seed=seed, verbose, runtestorruntests=runtestorruntests,
+          classes=classes, crossValParams=crossValParams, modellingParams=modellingParams, 
+          characteristics=characteristics, performanceType=performanceType, finalTier=finalTier, classIndex, z)
 
         
-
         #retained is now current + new retained
         id.retained = c(id.retained, MTunits[[ntier]]$id$id.retained)
-        # print(length(id.retained))
 
         retained = MTunits[[ntier]]$id$id.retained %>% unique() %>% length()
         toprogress = MTunits[[ntier]]$id$id.toprogress %>% unique() %>% length()
@@ -214,24 +146,14 @@ MTDT.algmClassifyR <-   function(MAEobject,
       
     }
     
-    return(MTDTobject = list(MTlist=MTlist,
-                             myperms=myperms,
-                             dataList=MAEobject,
-                             modelList=modelList,
-                             tierList=tierList,
-                             ssercutoffList=ssercutoffList))
+    return(MTDTobject = list(MTlist=MTlist, myperms=myperms, dataList=MultiAssayExperiment,
+                             modelList=modelList, tierList=tierList, ssercutoffList=ssercutoffList))
   }
 }
 
 
-MTDT.algmCost <- function(dataList,
-                          modelList,
-                          rsmpList,
-                          tierList,
-                          ssercutoffList,
-                          k=5, times=100, rsmp=100,
-                          seed=1, verbose=F){
-  
+MTDT.algmCost <- function(dataList, rsmpList, tierList,
+  ssercutoffList, k=5, times=100, rsmp=100, seed=1, verbose=F){
   
   #how many different datasets
   nblocks = length(dataList)
@@ -241,17 +163,17 @@ MTDT.algmCost <- function(dataList,
         nblocks = length(experiments(measurements))
   }
   
-
   #returns matrix of permutations of models
   myperms = perm(1:nblocks)
   
   MTlist = list()
-  
-  
+
   #create a new list
   MTunits = list()
+  
   #create # retained
   id.retained = NULL
+  
   #create sequence
   tierseq = NULL
   
@@ -260,12 +182,13 @@ MTDT.algmCost <- function(dataList,
     #set tierseq and tier as per myperms #
     tierseq = c(tierseq, tierList[[myperms[nperm, ntier]]])
   }
+  
   tierseq = paste0(tierseq, collapse="-")
   
   #for each col of each row
   for (ntier in 1:dim(myperms)[2]){
     
-    #z = which # as per permutation
+    #z = which # permutation
     z = myperms[nperm, ntier]
     data = dataList[[z]]
     model = modelList[[z]]
@@ -274,70 +197,22 @@ MTDT.algmCost <- function(dataList,
     ssercutoff = ssercutoffList[[z]]
     modelclass = class(model)
     
-    #assume ID first column, y second column
-    IDnm = colnames(data)[1]
-    ynm = colnames(data)[2]
-    
-    #sym takes strings and turns them into symbols
-    ID_nm = sym(IDnm)
-    y_nm = sym(ynm)
-    
-    #because id is a symbol now, !! tells dplyr to ignore its quotes and read its literal value instead
-    #if id not in retained then we include it
-    id.include = data %>% 
-      dplyr::filter(!(!!ID_nm) %in% id.retained) %>% 
-      dplyr::select(!!ID_nm) %>% 
-      as_vector 
-    names(id.include) <- NULL #set name of object to null? no col headings
-    
-
-    
-    #linear model / linear regression
-    if ("glm" %in% modelclass) {
-      if ("lrm" %in% modelclass) {
-        formula = model$sformula
-        method = "lrm"
-      } else {
-        formula = model$formula
-        method = "glm"
-      }
-    }
-    
-    #linear disc analysis
-    if ("lda_diag" %in% modelclass) {
-      formula = NULL
-      method = "dlda"
-      rsmpmethod = "boot"
-    }
-    
-    #KNN
-    ##############################
-    if ("knn" %in% modelclass) {
-      formula = NULL
-      method = "knn"
-      rsmpmethod = "rcv"
-    }
-    ############################
     
     #e.g. (1) Clin-Histo-Nano: <Clin>
     print(paste0("(", nperm, ") ", tierseq, ": <", tier, ">"))
     # print(paste0("nperms = ", nperm, " ; ntiers = ", ntier, " ; tier = ", tier)) #############<-------------------------
     
     
-    #pass model and data to MTblock which returns retained status of current sequence layer
-    MTunits[[ntier]] = MTblockClassifyR(
-      data=data, id.include=id.include,
-      formula=formula, model=model, method=method, 
-      rsmpmethod=rsmpmethod, k=k, permutations=times, rsmp=rsmp,
-      ssercutoff=ssercutoff, tier=tier, plotlabel=tier,
-      seed=seed, verbose=verbose, runtestorruntests,classes,  params,leave,percent,  resubstituteParams,     minimumOverlapPercent,       validation,
-      parallelParams,        easyDatasetID ,       hardDatasetID,       featureSets ,       metaFeatures ,
-      datasetName ,       classificationName ,   training, testing
+    #pass model and data to MTblock which returns retained status of current layer
+    MTunits[[ntier]] = MTblockClassifyR( data=data, id.include=id.include,
+      formula=formula, model=model, method=method, rsmpmethod=rsmpmethod, k=k, permutations=times, rsmp=rsmp,
+      ssercutoff=ssercutoff, tier=tier, plotlabel=tier, seed=seed, verbose=verbose, runtestorruntests,classes,  
+      params,leave,percent, resubstituteParams, minimumOverlapPercent, validation,
+      parallelParams, easyDatasetID , hardDatasetID, featureSets , metaFeatures ,
+      datasetName , classificationName , training, testing
     )
     
     id.retained = c(id.retained, MTunits[[ntier]]$id$id.retained)
-    
-
     
     retained = MTunits[[ntier]]$id$id.retained %>% unique() %>% length()
     toprogress = MTunits[[ntier]]$id$id.toprogress %>% unique() %>% length()
@@ -370,7 +245,6 @@ MTDT.summary <- function(MTDTobject){
   myperms=MTDTobject$myperms
   MTlist=MTDTobject$MTlist
   tierList=MTDTobject$tierList
-  
   dataList=MTDTobject$dataList
   
   if(class(dataList) == "MultiAssayExperiment"){
@@ -379,7 +253,6 @@ MTDT.summary <- function(MTDTobject){
   
   ntiers=dim(myperms)[2]
   nperms=dim(myperms)[1]
-  # MTlist[[nperms]][[ntiers]]
   
   tserplots = list()
   stratplots = list()
@@ -402,8 +275,6 @@ MTDT.summary <- function(MTDTobject){
     id.retained = NULL
     id.all = NULL
     id.notretained = NULL
-    # id.retained.bytier = NULL
-    # id.notretained.bytier = NULL
     tierlabel = NULL
     seqname = paste0("Sequence.", nperm)
     TSERcutoffplots[[nperm]] = seqname
@@ -416,9 +287,6 @@ MTDT.summary <- function(MTDTobject){
       id.retained = c(id.retained,
                       MTlist[[nperm]][[ntier]]$id$id.retained)
       id.retained = id.retained %>% unique()
-      # id.retained.bytier[[nperm]][[ntier]] <- MTlist[[nperm]][[ntier]]$id$id.retained
-      # id.notretained.bytier[[nperm]][[ntier]] <-c(MTlist[[nperm]][[ntier]]$id$id.toprogress,
-      #                                             MTlist[[nperm]][[ntier]]$id$id.notprocessed)
       id.all = c(id.all,
                  MTlist[[nperm]][[ntier]]$id$id.retained,
                  MTlist[[nperm]][[ntier]]$id$id.toprogress,
@@ -459,11 +327,6 @@ MTDT.summary <- function(MTDTobject){
     ynm = colnames(TSER.retained)[2]
     y_nm = sym(ynm)
     
-
-    
-    
-    
-    
     TSER.overall[[nperm]] = dplyr::bind_rows(
       TSER.retained %>% 
         dplyr::group_by(rpt) %>% 
@@ -475,23 +338,22 @@ MTDT.summary <- function(MTDTobject){
         dplyr::mutate(strata=factor("Not retained", levels=c("Retained", "Not retained")))
     )
     
-    # print(TSER.overall[[nperm]])
     
     tserplots[[nperm]] = tsercutoff_plot(TSER.overall[[nperm]]) + 
       ggtitle(paste0("Overall: ", tierlabel))
     
     for (ntier in 1:ntiers){
       TSERcutoffplots.tiers[[ntier]] = MTlist[[nperm]][[ntier]]$plots$tsercutoffplot +
-        # ggtitle(paste0(tierlabel, " (", tierList[[myperms[nperm, ntier]]], ")"))
         ggtitle(tierList[[myperms[nperm, ntier]]])
       
     }
+  
     TSERcutoffplots[[nperm]] <- TSERcutoffplots.tiers
     
     n.retained=0
     lvls = NULL
     stra = NULL
-    ##
+    
     for (ntier in 1:ntiers){
       n.from=n.retained + 1
       n.end = n.retained +
@@ -520,9 +382,7 @@ MTDT.summary <- function(MTDTobject){
                paste0("Not processed (", tierList[[myperms[nperm, ntier]]], ")"))
     }
     
-    
-    
-    
+
     stra = stra %>% 
       dplyr::mutate(
         tierstrata=paste0(strata, " (", tier, ")"),
@@ -542,16 +402,14 @@ MTDT.summary <- function(MTDTobject){
     
     #create tree graphic?
     library(data.tree)
-    
-    
 
-    
-    
     IDnm = colnames(stra)[1]
     ID_nm = sym(IDnm)
+    
     stra = stra %>% 
       dplyr::arrange(strata)
     idsort = stra[[1]] %>% unique()
+    
     stratplots[[nperm]] = stra %>% 
       dplyr::arrange(strata) %>% 
       dplyr::mutate(ID=factor(!!ID_nm, levels=idsort)) %>% 
@@ -562,6 +420,7 @@ MTDT.summary <- function(MTDTobject){
       theme(panel.background = element_blank(),
             axis.text.x = element_blank(),
             aspect.ratio=1/4)
+    
     strat.overall[[nperm]] = stra
     
     TSERoverall.retained[[nperm]] = TSER.overall[[nperm]] %>% 
@@ -579,7 +438,6 @@ MTDT.summary <- function(MTDTobject){
   }
   
   
-  
   TSER.summary <- tibble::tibble(
     Tier.Sequence = tiersequence,
     TSA.retained = (1-TSERoverall.retained),
@@ -589,7 +447,6 @@ MTDT.summary <- function(MTDTobject){
   )
   
 
-  
   return(list(TSER.summary = TSER.summary,
               IDs = id,
               Results.TSER.overall = TSER.overall,
@@ -604,7 +461,7 @@ MTDT.summary <- function(MTDTobject){
 
 
 MTDT.ClassifyR.summary <- function(MTDTobject){
-  # print(MTDTobject$ssercutoffList)
+
   myperms=MTDTobject$myperms
   MTlist=MTDTobject$MTlist
   tierList=MTDTobject$tierList
@@ -617,7 +474,6 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
   
   ntiers=dim(myperms)[2]
   nperms=dim(myperms)[1]
-  # MTlist[[nperms]][[ntiers]]
   
   tserplots = list()
   stratplots = list()
@@ -640,8 +496,6 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
     id.retained = NULL
     id.all = NULL
     id.notretained = NULL
-    # id.retained.bytier = NULL
-    # id.notretained.bytier = NULL
     tierlabel = NULL
     seqname = paste0("Sequence.", nperm)
     TSERcutoffplots[[nperm]] = seqname
@@ -655,9 +509,6 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
       id.retained = c(id.retained,
                       MTlist[[nperm]][[ntier]]$id$id.retained)
    
-      
-      
-      
       id.retained = id.retained %>% unique()
 
       id.all = c(id.all,
@@ -672,11 +523,6 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
       IDnm = colnames(dataList)[1]
       ID_nm = sym(IDnm)
 
-      
-      
-      # TSER.retained$class = TSER.retained$class %>% as.factor() %>% as.numeric()-1
-      # MTlist[[nperm]][[ntier]]$SSER$phat_rsmp$class = MTlist[[nperm]][[ntier]]$SSER$phat_rsmp$class %>% as.factor() %>% as.numeric()-1
-      
 
       TSER.retained = dplyr::bind_rows(
         TSER.retained,
@@ -697,19 +543,15 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
                        id.notretained=id.notretained)
     tiersequence[[nperm]] = tierlabel
     
-    
-
     ynm = colnames(TSER.retained)[2]
     y_nm = ynm
   
     
     TSER.overall[[nperm]] = dplyr::bind_rows(
       TSER.retained %>% 
-        # dplyr::group_by(rpt) %>% 
         dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>% 
         dplyr::mutate(strata=factor("Retained", levels=c("Retained", "Not retained"))),
       TSER.notretained %>% 
-        # dplyr::group_by(rpt) %>% 
         dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>% 
         dplyr::mutate(strata=factor("Not retained", levels=c("Retained", "Not retained")))
     )
@@ -719,16 +561,16 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
     
     for (ntier in 1:ntiers){
       TSERcutoffplots.tiers[[ntier]] = MTlist[[nperm]][[ntier]]$plots$tsercutoffplot +
-        # ggtitle(paste0(tierlabel, " (", tierList[[myperms[nperm, ntier]]], ")"))
         ggtitle(tierList[[myperms[nperm, ntier]]])
       
     }
+    
     TSERcutoffplots[[nperm]] <- TSERcutoffplots.tiers
     
     n.retained=0
     lvls = NULL
     stra = NULL
-    ##
+
     for (ntier in 1:ntiers){
       n.from=n.retained + 1
       n.end = n.retained +
@@ -743,12 +585,6 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
         dplyr::filter(strata=="Retained") %>% nrow()
       
       
-      # stra$class = stra$class  %>%  as.factor() %>% as.numeric()-1
-      # stra$yhat = stra$yhat %>%  as.factor() %>% as.numeric()-1
-      
-      # stra.MTunit$class = stra.MTunit$class %>%  as.factor() %>%as.numeric()-1
-      # stra.MTunit$yhat = stra.MTunit$yhat %>% as.factor() %>%as.numeric()-1
-      
       stra = dplyr::bind_rows(stra,  stra.MTunit)
       
       lvls = c(lvls,
@@ -756,9 +592,6 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
                paste0("To progress (", tierList[[myperms[nperm, ntier]]], ")"),
                paste0("Not processed (", tierList[[myperms[nperm, ntier]]], ")"))
     }
-    
-    
-    
     
     stra = stra %>% 
       dplyr::mutate(
@@ -781,21 +614,24 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
     #############################################################################################
     #create tree 
     
-    
-    
     treeRoot <- Node$new(stra$tier[1])
     currNode = treeRoot
     
     for(ntier in 1:ntiers+1){
       
+      #Retained
       num1 = stra %>% filter(tierstrata == levels(stra$tierstrata)[(((ntier-1)-1)*3)+1]) %>% nrow()
-
       tier = strsplit(levels(stra$tierstrata)[(((ntier-1)-1)*3)+1], '[()]')[[1]][2]
       if(num1>0){
+        #finalTier Check -> retain all if final tier
+        if(ntier == ntiers+1){
+          num1 = num1 + (stra %>% filter(tierstrata == levels(stra$tierstrata)[(((ntier-1)-1)*3)+3]) %>% nrow() )
+        }
       retained = currNode$AddChild(levels(stra$tierstrata)[  (((ntier-1)-1)*3)+1], counter = num1, tier = tier, tierstrata = levels(stra$tierstrata)[(((ntier-1)-1)*3)+1], tierOrder = ntier-1)
       }
       
-      num2 = stra %>% filter(tierstrata == levels(stra$tierstrata)[(((ntier-1)-1)*3)+2]) %>% nrow() 
+      #To Progress
+      num2 = stra %>% filter(tierstrata == levels(stra$tierstrata)[(((ntier-1)-1)*3)+2]) %>% nrow()
       if(num2>0){
       progress = currNode$AddChild(levels(stra$tierstrata)[  (((ntier-1)-1)*3)+2], counter = num2,tier = tier, tierstrata = levels(stra$tierstrata)[(((ntier-1)-1)*3)+2], tierOrder = ntier-1)
       }else{
@@ -803,6 +639,7 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
         break;
       }
       
+      #Not Processed
       num3 = stra %>% filter(tierstrata == levels(stra$tierstrata)[(((ntier-1)-1)*3)+3]) %>% nrow() 
       if(num3>0){
       notprog = currNode$AddChild(levels(stra$tierstrata)[  (((ntier-1)-1)*3)+3], counter = num3,tier = tier, tierstrata = levels(stra$tierstrata)[(((ntier-1)-1)*3)+3], tierOrder = ntier-1)
@@ -814,8 +651,6 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
     treeplots[[nperm]] = treeRoot
     
     ####################################################################################################
-    
-    
     
     IDnm = colnames(stra)[1]
     ID_nm = sym(IDnm)
@@ -847,8 +682,6 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
     N.notretained[[nperm]] = id[[nperm]]$id.notretained %>% length()
     
   }
-  
-  
   
   TSER.summary <- tibble::tibble(
     Tier.Sequence = tiersequence,
@@ -872,10 +705,6 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
 }
 
 
-
-
-
-
 MTperm.summary <- function(MTDTobject){
   
   myperms = MTDTobject$myperms
@@ -897,10 +726,11 @@ MTperm.summary <- function(MTDTobject){
   MTperm.summary = NULL
   
   for (nperm in 1:nperms) {
+    
     seq = NULL
     
     for (ntier in 1:ntiers) {
-      
+
       coordinate = myperms[nperm, ntier]
       
       retained = MTDTobject$MTlist[[nperm]][[ntier]]$id$id.retained %>% unique() %>% length()
@@ -949,7 +779,6 @@ MTDT.cost.summary <- function(MTDTobject, tierUnitCosts){
   
   myperms = MTDTobject$myperms
   tierList = MTDTobject$tierList
-  # Thresholds = MTDTobject$ssercutoffList
   ntiers = dim(myperms)[2]
   nperms = MTDTsummary$Results.stratification %>% length()
   Costs = NULL

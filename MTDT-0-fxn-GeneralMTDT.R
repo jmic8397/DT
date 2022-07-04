@@ -1,39 +1,10 @@
 
 GeneralMTDT <- function(MultiAssayExperiment,
-                      modelList,
-                      rsmpList,
-                      tierList,
-                      fixedTier = NULL,
-                      ssercutoffList,
-                      tierUnitCosts = c(100, 500, 1000)
-                      ,
-                      
-                      costBound=0, objective=NULL,
-                      resubstituteParams =ResubstituteParams(nFeatures = seq(5, 25, 5),
-                                                             performanceType = "balanced error",
-                                                             better = "lower"),
-                      runtestorruntests = "runtest",
-                      classes = NULL,
-                      params = list(SelectParams(), TrainParams(), PredictParams()),
-                      leave = 2,
-                      percent=25,
-                      minimumOverlapPercent = 80,
-                      validation = c("permute", "leaveOut", "fold"),
-                      parallelParams = bpparam(),
-                      
-                      easyDatasetID = "clinical",
-                      hardDatasetID = names(dataList)[1],
-                      featureSets = NULL,
-                      metaFeatures = NULL,
-                      datasetName = NULL,
-                      classificationName = "Easy-Hard Classifier",
-                      easyClassifierParams = list(minCardinality = 2, minPurity = 0.9),
-                      hardClassifierParams = list(selParams, TrainParams(), PredictParams()),
-                      
-                      k=5, permutations=100, rsmp=100,
+                      tierList,fixedTier = NULL,
+                      ssercutoffList,tierUnitCosts = c(100, 500, 1000), 
+                      performanceType = "Sample Error", runtestorruntests = "runtest",
+                      classes = NULL, crossValParams = NULL, modellingParams = NULL, characteristics = NULL,
                       seed=1, verbose=F){
-
-
 
   
 #priceList has price for each sample of each model
@@ -41,45 +12,10 @@ GeneralMTDT <- function(MultiAssayExperiment,
 #objective may be "cost" or "accuracy" -> permutations will be selected to achieve objective
 #do we want a timelist eventually?
 #fixedtier is whether to fix the first tier of permutations
-
-#determine inputs and call relevant function
-
   
-  #we pass the data into MTDT.algm which calls ClassifyR and returns the file containing the error
-  
-  
-  
-  
-  MTDTresults = MTDT.algmClassifyR(MultiAssayExperiment,
-                                   modelList,
-                                   rsmpList,
-                                   tierList,
-                                   fixedTier,
-                                   ssercutoffList,
-                                   tierUnitCosts,
-                                   resubstituteParams,
-                                   runtestorruntests ,
-                                   classes,
-                                   params ,
-                                   leave ,
-                                   percent,
-                                   minimumOverlapPercent,
-                                   validation,
-                                   parallelParams,
-                                   easyDatasetID,
-                                   hardDatasetID,
-                                   featureSets,
-                                   metaFeatures,
-                                   datasetName,
-                                   classificationName,
-                                   easyClassifierParams,
-                                   hardClassifierParams,
-                                   k, permutations, rsmp,
-                                   seed, verbose)
-
-  
-  
-  
+MTDTresults = MTDT.algmClassifyR(MultiAssayExperiment, tierList, fixedTier = fixedTier, ssercutoffList = ssercutoffList, tierUnitCosts= tierUnitCosts,
+                                 performanceType = performanceType, runtestorruntests = runtestorruntests , classes=classes , crossValParams=crossValParams, 
+                                 modellingParams=modellingParams, characteristics=characteristics, seed=seed, verbose=verbose)
 
 return(MTDTresults)
 
