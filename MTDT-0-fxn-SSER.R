@@ -5,9 +5,9 @@
 #Sample specific error calculated using classifyR's predictions
 
 sser_classifyR <- function( MAEobject=NULL,
-                            classes, crossValParams = NULL, 
+                            classes, tier = NULL, crossValParams = NULL, 
                            modellingParams =NULL, characteristics = characteristics, seed=1, 
-                           performanceType = "Sample Error",
+                           performanceType = "Sample Error", 
                            verbose=verbose,classIndex, z){
   
   
@@ -24,13 +24,13 @@ sser_classifyR <- function( MAEobject=NULL,
   library(dplyr)
   
   
-  phat_rsmp = NULL
-  
   set.seed(seed)
   
+  #Select targets, if clinical is used it will be added onto the end of the experiment lists
+  #and as such its index z > length of experiments
 
-  DMresults <- runTests(MAEobject, target=names(MAEobject)[z], outcomesColumns=classes, 
-                        crossValParams = crossValParams, modellingParams = modellingParams, 
+  DMresults <- runTests(MAEobject, target=tier, outcomesColumns=classes, 
+                        crossValParams = crossValParams, modellingParams = modellingParams[[z]], 
                         characteristics = characteristics)
   
   # This gives estimate error rate
@@ -56,10 +56,9 @@ sser_classifyR <- function( MAEobject=NULL,
     }
   }
   
-  return(list(rsmp_method=rsmp_method,
+  return(list(
               removed = ID.removed,
-              SSER=errorTable, 
-              phat_rsmp=phat_rsmp))
+              SSER=errorTable))
 }
 
 

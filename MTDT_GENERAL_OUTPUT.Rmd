@@ -1,6 +1,6 @@
 ---
 title: "MTDT_Function_ClassifyR"
-author: "Andy Wang & Jamie Mickaill"
+author: "Andy Wang, Andy Tran & Jamie Mickaill"
 date: "01/02/2022"
 output: html_document
 always_allow_html: true
@@ -94,19 +94,18 @@ weights = c(0.5,-0.5)
 #For melanoma example: longRNA has too many features, we just want a single iTRAQ****
 tierList = c( "microRNA"  ,    "NanoString"   , "iTRAQabsolute") 
 
-#This doesn't do anything yet
-includeClinical = TRUE
 
 #Sample specific error cutoffs 
 #(E.g. x | if the sample specific error of cross validated prediction is > x, the sample will 'progress' to the next tier. Lower cutoff = higher retention generally)
-ssercutoffList= list(c(0.4, 0.4, 0.4),c(0.45, 0.45, 0.45)) # -> For multi-threshold analysis
-# ssercutoffList= list(c(0.4, 0.4, 0.4)) 
+# ssercutoffList= list(c(0.4, 0.4, 0.4),c(0.6, 0.6, 0.6)) # -> For multi-threshold analysis
+ssercutoffList= list(c(0.4, 0.4, 0.4))
 
-#Tier costs (e.g. price of performing test for an individual)
+#Tier costs (e.g. price of performing test for an individual), Clinical also last index
 tierUnitCosts = c(100, 500, 1000)
 
 #Which tier to fix as first in Tree? (If any)
 # e.g. fixedTier = "Clinical"
+# fixedTier = "clinical"
 fixedTier = NULL
 
 #Choose whether CV needed?
@@ -119,7 +118,8 @@ classes = "class1vs4years"
 #Performance type (e.g. Sample Error) 
 performanceType = "Sample Error"
 
-##Cross validation parameters
+
+##Cross validation parameters (could create a list for each experiment)
 crossValParams = CrossValParams(
     samplesSplits = "Permute k-Fold",
     permutations = 5,
@@ -133,30 +133,40 @@ crossValParams = CrossValParams(
 
 ##Data transformation parameters
 # transformParams = TransformParams(transform, characteristics = DataFrame(), intermediate = character(0), ...)
-transformParams = NULL
+transformParamsList = c(NULL,NULL,NULL)
+
+
 
 ##Feature selection parameters
 #May require a list of different param Objects for each Experiment
 # selectParams = SelectParams(featureSelection, characteristics = DataFrame(), minPresence = 1, intermediate = character(0), subsetToSelections = TRUE, tuneParams = list(nFeatures = seq(10, 100, 10), performanceType = "Balanced Error"), ...)
-selectParams = SelectParams()
+selectParamsList = c(SelectParams(),SelectParams(),SelectParams())
 
-##Training Parameters
+
+##Training Parameters -> Insert classifier here
 #TrainParams = TrainParams(classifier, characteristics = DataFrame(), intermediate = character(0), getFeatures = NULL, ...)
-trainParams = TrainParams()
+trainParamsList = c(TrainParams(),TrainParams(),TrainParams())
 
-##Prediction Parameters
+##Prediction Parameters -> Insert classifier here
 # PredictParams(predictor, characteristics = DataFrame(), intermediate = character(0), ...)
-predictParams = PredictParams()
+predictParamsList = c(PredictParams(),PredictParams(),PredictParams())
 
-##Modelling params
-modellingParams = ModellingParams(
+##Modelling params List
+modellingParams = list()
+
+for(model in 1:length(tierList)){
+  currModellingParams = ModellingParams(
     balancing = "none",
-    transformParams = transformParams,
-    selectParams = selectParams,
-    trainParams = trainParams,
-    predictParams = predictParams,
+    transformParams  = NULL,
+    selectParams = selectParamsList[[model]],
+    trainParams = trainParamsList[[model]],
+    predictParams = predictParamsList[[model]],
     doImportance = FALSE
 )
+  
+  modellingParams = c(modellingParams,currModellingParams)
+}
+
 
 #describing the characteristics of the classification used
 # characteristics = S4Vectors::DataFrame()
@@ -189,7 +199,9 @@ retainList = !is.na(colData(MultiAssayExperiment)[classColumn])
 MultiAssayExperiment = MultiAssayExperiment[,retainList & !is.na(retainList),]
 
 #Subset specified experiments from tierList (e.g. we only want to use 2 assays for now)
-MultiAssayExperiment = MultiAssayExperiment[,,tierList]
+
+
+MultiAssayExperiment = MultiAssayExperiment[,,tierList[tierList != "clinical"]]
 
 MTDTsummaries = list()
 MTDTresultsList = list()
@@ -199,7 +211,7 @@ for(cutoff in 1:length(ssercutoffList)){
   MTDTresults = GeneralMTDT(MultiAssayExperiment,
                         tierList,fixedTier,ssercutoffList[[cutoff]],
                         tierUnitCosts = tierUnitCosts , performanceType = performanceType,
-                       runtestorruntests = runtestorruntests ,classes, crossValParams = crossValParams, modellingParams = modellingParams, characteristics = characteristics, seed, verbose)
+                       runtestorruntests = runtestorruntests ,classes, crossValParams = crossValParams, modellingParams = modellingParams, characteristics = characteristics,  seed, verbose)
   
   MTDTresultsList = append(MTDTresultsList, list(MTDTresults))
   

@@ -10,7 +10,7 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
                                  ssercutoffList,tierUnitCosts = c(100, 500, 1000), 
                                  performanceType = "Sample Error", runtestorruntests = "runtest",
                                  classes = NULL, crossValParams = NULL, modellingParams = NULL, 
-                                 characteristics = NULL,
+                                 characteristics = NULL, 
                                  seed=1, verbose=F){
   
   
@@ -18,7 +18,7 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
   
 
   #how many different datasets
-  nblocks = length(experiments(MultiAssayExperiment))
+  nblocks = length(tierList)
   
   
   #returns matrix of permutations of models
@@ -41,6 +41,7 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
       }
     }
   }
+  
   
   MTlist = list()
   
@@ -124,7 +125,8 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
           ssercutoff=ssercutoff, tier=tier, plotlabel=tier,
           seed=seed, verbose, runtestorruntests=runtestorruntests,
           classes=classes, crossValParams=crossValParams, modellingParams=modellingParams, 
-          characteristics=characteristics, performanceType=performanceType, finalTier=finalTier, classIndex, z)
+          characteristics=characteristics, performanceType=performanceType, finalTier=finalTier, 
+           classIndex, z)
 
         
         #retained is now current + new retained
@@ -147,7 +149,7 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
     }
     
     return(MTDTobject = list(MTlist=MTlist, myperms=myperms, dataList=MultiAssayExperiment,
-                             modelList=modelList, tierList=tierList, ssercutoffList=ssercutoffList))
+                             tierList=tierList, ssercutoffList=ssercutoffList))
   }
 }
 
@@ -191,7 +193,7 @@ MTDT.algmCost <- function(dataList, rsmpList, tierList,
     #z = which # permutation
     z = myperms[nperm, ntier]
     data = dataList[[z]]
-    model = modelList[[z]]
+    # model = modelList[[z]]
     rsmpmethod = rsmpList[[z]]
     tier = tierList[[z]]
     ssercutoff = ssercutoffList[[z]]
@@ -204,14 +206,13 @@ MTDT.algmCost <- function(dataList, rsmpList, tierList,
     
     
     #pass model and data to MTblock which returns retained status of current layer
-    MTunits[[ntier]] = MTblockClassifyR( data=data, id.include=id.include,
-      formula=formula, model=model, method=method, rsmpmethod=rsmpmethod, k=k, permutations=times, rsmp=rsmp,
-      ssercutoff=ssercutoff, tier=tier, plotlabel=tier, seed=seed, verbose=verbose, runtestorruntests,classes,  
-      params,leave,percent, resubstituteParams, minimumOverlapPercent, validation,
-      parallelParams, easyDatasetID , hardDatasetID, featureSets , metaFeatures ,
-      datasetName , classificationName , training, testing
-    )
-    
+    MTunits[[ntier]] = MTblockClassifyR( data=data, id.retained=id.include,
+      ssercutoff=ssercutoff, tier=tier, plotlabel=tier, runtestorruntests, classes = classes,
+      crossValParams = crossValParams, modellingParams = modellingParams, characteristics = characteristics,
+      performanceType = performanceType,seed=seed, verbose=verbose,finalTier,classIndex, z)
+
+
+        
     id.retained = c(id.retained, MTunits[[ntier]]$id$id.retained)
     
     retained = MTunits[[ntier]]$id$id.retained %>% unique() %>% length()
@@ -232,7 +233,7 @@ MTDT.algmCost <- function(dataList, rsmpList, tierList,
   return(MTDTobject = list(MTlist=MTlist,
                            myperms=myperms,
                            dataList=dataList,
-                           modelList=modelList,
+                           
                            tierList=tierList,
                            ssercutoffList=ssercutoffList))
 }
@@ -712,10 +713,10 @@ MTperm.summary <- function(MTDTobject){
   tierList = MTDTobject$tierList %>% unlist
   ssercutoffList = MTDTobject$ssercutoffList
   tierUnitCosts = tierUnitCosts
-  modelclass = NULL
-  for (i in 1:length(MTDTobject$modelList)){
-    modelclass = c(modelclass, class(MTDTobject$modelList[[i]])[1])
-  }  
+  # modelclass = NULL
+  # for (i in 1:length(MTDTobject$modelList)){
+  #   modelclass = c(modelclass, class(MTDTobject$modelList[[i]])[1])
+  # }  
   
   nperms = dim(myperms)[1]
   ntiers = dim(myperms)[2]
@@ -745,7 +746,7 @@ MTperm.summary <- function(MTDTobject){
           nperm = nperm,
           ntier = ntier,
           tier = tierList[[coordinate]],
-          model = modelclass[[coordinate]],
+          # model = modelclass[[coordinate]],
           sser = ssercutoffList[[coordinate]],
           Cost.perUnit = tierUnitCosts[[coordinate]],
           N.in = total,
