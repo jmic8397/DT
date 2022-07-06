@@ -109,7 +109,6 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
         retainListLogical = !(rownames(colData(MAEwithoutRetained)) %in% retainList )
         
         if(length(id.retained)>0){
-            # print("SUBSETTING")
             MAEwithoutRetained = MAEwithoutRetained[,retainListLogical ,]
         }
         
@@ -537,6 +536,9 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
       )
     }
     
+    print(TSER.retained)
+    print(TSER.notretained)
+    
 
     tierlabel = paste(tierlabel, collapse = '-')
     
@@ -556,6 +558,7 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
         dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>% 
         dplyr::mutate(strata=factor("Not retained", levels=c("Retained", "Not retained")))
     )
+    print(TSER.overall[[nperm]])
     
     tserplots[[nperm]] = tsercutoff_plot(TSER.overall[[nperm]]) + 
       ggtitle(paste0("Overall: ", tierlabel))
@@ -603,7 +606,7 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
     stratplots.prop[[nperm]] = stra %>% 
       ggplot() +
       geom_tile(aes(y=tierstrata, x=ID, fill=sser), colour="black") +
-      ylab("") + xlab("") + ggtitle(paste("Sequence:", tierlabel, " Threshold: ", MTDTobject$ssercutoffList[1])) +
+      ylab("") + xlab("") + ggtitle(paste("Sequence:", tierlabel, "\n Sample Error Cutoff: ", MTDTobject$ssercutoffList[1])) +
       scale_fill_gradient(low="black", high="white") +
       theme(panel.background = element_blank(),
             axis.text.x = element_blank(),
@@ -864,8 +867,7 @@ MTDT.ClassifyR.cost.summary <- function(MTDTobject, tierUnitCosts){
     )
     
   }
-  print(Costs)
-  
+
   TSER.summary = MTDTsummary$TSER.summary %>% 
     dplyr::mutate(
       N.Total = N.retained + N.notretained,

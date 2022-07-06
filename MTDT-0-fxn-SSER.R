@@ -22,16 +22,62 @@ sser_classifyR <- function( MAEobject=NULL,
   library(sparsediscrim)
   library(tidyverse)
   library(dplyr)
+  library(e1071)
   
   
   set.seed(seed)
   
-  #Select targets, if clinical is used it will be added onto the end of the experiment lists
-  #and as such its index z > length of experiments
+  print(tier)
+  
+  #remove Na's for classifyR
+  #not sure which column for subset
+  MAECompleteCases = MAEobject[,complete.cases(MAEobject[,,tier]),tier]
+  
 
-  DMresults <- runTests(MAEobject, target=tier, outcomesColumns=classes, 
-                        crossValParams = crossValParams, modellingParams = modellingParams[[z]], 
-                        characteristics = characteristics)
+  #Check CV is valid  
+  
+
+  
+  if(length(unlist(colnames(MAECompleteCases[1]))) <= crossValParams@folds){
+    print(length(unlist(colnames(MAECompleteCases[1]))))
+    
+    print("Low row count, unable to use CV")
+    
+    
+    
+    # crossValParams@samplesSplits  = "Leave-k-Out"
+    # crossValParams@folds <- length(unlist(colnames(MAECompleteCases[1])))
+    # crossValParams@permutations <- length(unlist(colnames(MAECompleteCases[1])))
+    # crossValParams@leave <- 1
+    # crossValParams@percentTest <- 1/length(unlist(colnames(MAECompleteCases[1])))
+    DMresults <- runTest(MAECompleteCases, OutcomesTrain=tier, OutcomesTest = tier,measurementsTrain=MAECompleteCases[1:length(unlist(colnames(MAECompleteCases)))/4,,], measurementsTest=MAECompleteCases[length(unlist(colnames(MAECompleteCases)))/4:length(unlist(colnames(MAECompleteCases))),,], outcomesColumns=classes, 
+                          modellingParams = modellingParams[[z]], 
+                          characteristics = characteristics)
+    
+    
+  }else{
+    
+    
+    DMresults <- runTests(MAECompleteCases, target=tier, outcomesColumns=classes, 
+                          crossValParams = crossValParams, modellingParams = modellingParams[[z]], 
+                          characteristics = characteristics)
+  }
+  
+  
+  
+  #if leave > fold size then readjust leave
+  # maxFoldSize = length(unlist(colnames(MAECompleteCases[1]))) /crossValParams@folds
+  # actualFoldSize =  crossValParams@leave
+  # print(maxFoldSize)
+  # print(actualFoldSize)
+  # print(crossValParams)
+  # 
+  # if(actualFoldSize > maxFoldSize){
+  #   print("fold size too big, decreasing leave size")
+  #   crossValParams@leave <- (length(unlist(colnames(MAECompleteCases[1])))/crossValParams@folds)
+  # }
+
+  
   
   # This gives estimate error rate
   performance = calcCVperformance(DMresults, performanceType)

@@ -32,6 +32,8 @@ library(knitr)
 library(png)
 library(magrittr)
 library(DT)
+library(e1071)
+library(randomForest)
 
 tictoc::tic()
 
@@ -50,6 +52,12 @@ source("./MTDT-0-fxn-others.R")
 source("./MTDT-0-fxn-MTDT.R")
 source("./MTDT-1-datachecking.R")
 
+
+# melanomaAssaysNorm
+# 
+# melanomaAssaysNorm[,,"iTRAQabsolute"]
+# 
+# subsetCompleteAssay2 = melanomaAssaysNorm[,complete.cases(melanomaAssaysNorm[,, "iTRAQabsolute" ]),]
 
 
 ```
@@ -78,6 +86,7 @@ At each node of the tree, a machine learning model is used to establish the samp
 #Choose the MultiAssayExperiment Object for performing classification   
 MultiAssayExperiment = melanomaAssaysNorm
 
+  
 #Properties for weighting 
 #(E.g. # of individuals retained or total cost of all tests performed at a given tier)
 properties = c("TSA.retained", "Cost.Total")
@@ -90,10 +99,8 @@ properties = c("TSA.retained", "Cost.Total")
 weights = c(0.5,-0.5)
 
 #List of tier names
-#Should default to names(measurements)) + clinical for tiers
 #For melanoma example: longRNA has too many features, we just want a single iTRAQ****
 tierList = c( "microRNA"  ,    "NanoString"   , "iTRAQabsolute") 
-
 
 #Sample specific error cutoffs 
 #(E.g. x | if the sample specific error of cross validated prediction is > x, the sample will 'progress' to the next tier. Lower cutoff = higher retention generally)
@@ -106,7 +113,7 @@ tierUnitCosts = c(100, 500, 1000)
 #Which tier to fix as first in Tree? (If any)
 # e.g. fixedTier = "Clinical"
 # fixedTier = "clinical"
-fixedTier = NULL
+fixedTier = "NanoString"
 
 #Choose whether CV needed?
 #runtest() or runtests()? 
@@ -131,6 +138,7 @@ crossValParams = CrossValParams(
 )
 
 
+
 ##Data transformation parameters
 # transformParams = TransformParams(transform, characteristics = DataFrame(), intermediate = character(0), ...)
 transformParamsList = c(NULL,NULL,NULL)
@@ -138,18 +146,18 @@ transformParamsList = c(NULL,NULL,NULL)
 
 
 ##Feature selection parameters
-#May require a list of different param Objects for each Experiment
 # selectParams = SelectParams(featureSelection, characteristics = DataFrame(), minPresence = 1, intermediate = character(0), subsetToSelections = TRUE, tuneParams = list(nFeatures = seq(10, 100, 10), performanceType = "Balanced Error"), ...)
 selectParamsList = c(SelectParams(),SelectParams(),SelectParams())
 
 
 ##Training Parameters -> Insert classifier here
+# To do: make this easier for the user by creating a funciton which will return the selectParamsList based on a simple classifier name, e.g. "SVM" will return SelectParams(SVMtrainInterface, kernel = "linear")?
 #TrainParams = TrainParams(classifier, characteristics = DataFrame(), intermediate = character(0), getFeatures = NULL, ...)
-trainParamsList = c(TrainParams(),TrainParams(),TrainParams())
+trainParamsList = c(TrainParams(SVMtrainInterface, kernel = "linear", tuneParams = list(cost = c(0.01, 0.1, 1, 10))),TrainParams(randomForestTrainInterface),TrainParams())
 
 ##Prediction Parameters -> Insert classifier here
 # PredictParams(predictor, characteristics = DataFrame(), intermediate = character(0), ...)
-predictParamsList = c(PredictParams(),PredictParams(),PredictParams())
+predictParamsList = c(PredictParams(SVMpredictInterface),PredictParams(randomForestPredictInterface),PredictParams())
 
 ##Modelling params List
 modellingParams = list()
@@ -168,8 +176,11 @@ for(model in 1:length(tierList)){
 }
 
 
+
+
 #describing the characteristics of the classification used
 # characteristics = S4Vectors::DataFrame()
+#to do: make a list and test out some non-null values
 characteristics = NULL
 
 seed=1
@@ -199,8 +210,6 @@ retainList = !is.na(colData(MultiAssayExperiment)[classColumn])
 MultiAssayExperiment = MultiAssayExperiment[,retainList & !is.na(retainList),]
 
 #Subset specified experiments from tierList (e.g. we only want to use 2 assays for now)
-
-
 MultiAssayExperiment = MultiAssayExperiment[,,tierList[tierList != "clinical"]]
 
 MTDTsummaries = list()
@@ -249,13 +258,13 @@ for(results in 1:length(MTDTsummaries)){
   MTDTsummary = MTDTsummaries[[results]]
   MTDTresults = MTDTresultsList[[results]]
 
-  cap1 = paste("Bubble Plot ",results,", Cutoff:", MTDTresults$ssercutoffList[[1]], sep = " ", collapse = NULL)
+  cap1 = paste("Sequence Accuracy Plot ",results,", Cutoff:", MTDTresults$ssercutoffList[[1]], sep = " ", collapse = NULL)
 
   tierSequence = MTDTsummary$TSER.summary$Tier.Sequence
 
   # Scatterplot with total model error
   theme_set(theme_bw())  # pre-set the bw theme.
-  g <- ggplot(MTDTsummary$TSER.summary, aes(((MTDTsummary$TSER.summary$TSA.retained * MTDTsummary$TSER.summary$N.retained ) + (MTDTsummary$TSER.summary$TSA.notretained * MTDTsummary$TSER.summary$N.notretained))/MTDTsummary$TSER.summary$N.Total , MTDTsummary$TSER.summary$Cost.Total)) + 
+  g <- ggplot(MTDTsummary$TSER.summary, aes((MTDTsummary$TSER.summary$TSA.retained * MTDTsummary$TSER.summary$N.retained )/MTDTsummary$TSER.summary$N.Total , MTDTsummary$TSER.summary$Cost.Total)) + 
     labs(subtitle="Accuracy and Cost", title=cap1, x = "Total Sequence Accuracy", y = "Total Cost")
   
   nperms = dim(MTDTresults$myperms)[1]
@@ -264,11 +273,15 @@ for(results in 1:length(MTDTsummaries)){
 #for each permutation we want to add concentric circles representing proportions of retention
 
   for(nperm in 1:nperms){
-
+    
+    
+    #Print Tree info in text format
     treeRoot = MTDTsummary$Plots.Tree[[nperm]]
+    print("\n")
+    print(MTDTsummary$TSER.summary$Tier.Sequence[nperm])
+    print("\n")
     print(treeRoot,"counter","tierOrder")
     df = ToDataFrameTree(treeRoot,"counter", "tierOrder")
-    
     df = df %>% filter(grepl('^.*Retained',levelName))
     df = df %>% mutate(counterSum = cumsum(counter))
     
@@ -279,12 +292,11 @@ for(results in 1:length(MTDTsummaries)){
       
       MTDTsummary$TSER.summary$TSA.retained
       
-      print(df$counterSum[i])
-        g = g + geom_point(aes_(x=((MTDTsummary$TSER.summary$TSA.retained[nperm] * MTDTsummary$TSER.summary$N.retained[nperm] ) + (MTDTsummary$TSER.summary$TSA.notretained[nperm] * MTDTsummary$TSER.summary$N.notretained[nperm]))/MTDTsummary$TSER.summary$N.Total[nperm] , y= MTDTsummary$TSER.summary$Cost.Total[nperm], size = df$counterSum[i]/df$counterSum[length(df$counterSum)], colour = df$counterSum[i] ),alpha = 0.05, show.legend=FALSE) 
+        g = g + geom_point(aes_(x=((MTDTsummary$TSER.summary$TSA.retained[nperm] * MTDTsummary$TSER.summary$N.retained[nperm] ) /MTDTsummary$TSER.summary$N.retained[nperm] ), y= MTDTsummary$TSER.summary$Cost.Total[nperm], size = df$counterSum[i]/df$counterSum[length(df$counterSum)], colour = df$counterSum[i] ),alpha = 0.05, show.legend=FALSE) 
     }
   }
 
-totalTierAccuracies = ((MTDTsummary$TSER.summary$TSA.retained * MTDTsummary$TSER.summary$N.retained ) + (MTDTsummary$TSER.summary$TSA.notretained * MTDTsummary$TSER.summary$N.notretained))/MTDTsummary$TSER.summary$N.Total
+totalTierAccuracies = (MTDTsummary$TSER.summary$TSA.retained * MTDTsummary$TSER.summary$N.retained )/MTDTsummary$TSER.summary$N.retained 
 
 #increasing range of axis to allow proper view of circles
 g = g+ geom_text(label = MTDTsummary$TSER.summary$Tier.Sequence, hjust=0, vjust=0)
