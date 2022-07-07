@@ -448,7 +448,7 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
       tier = strsplit(levels(stra$tierstrata)[(((ntier-1)-1)*3)+1], '[()]')[[1]][2]
       if(num1>0){
         #finalTier Check -> retain all if final tier
-        if(ntier == ntiers+1){
+        if(ntier == ntiers+1 || ((dim(MTlist[[nperm]][[ntier-1]]$TSERcutoff$Stratification)[1] == 0))){
           num1 = num1 + (stra %>% filter(tierstrata == levels(stra$tierstrata)[(((ntier-1)-1)*3)+3]) %>% nrow() )
         }
       retained = currNode$AddChild(levels(stra$tierstrata)[  (((ntier-1)-1)*3)+1], counter = num1, tier = tier, tierstrata = levels(stra$tierstrata)[(((ntier-1)-1)*3)+1], tierOrder = ntier-1)
@@ -610,17 +610,27 @@ MTDT.ClassifyR.cost.summary <- function(MTDTobject, tierUnitCosts){
   
   for (nperm in 1:nperms){
     tierseq = MTDTsummary$TSER.summary$Tier.Sequence[nperm] %>% str_split("-") %>% as_vector()
-    print(strat.overall[[nperm]])
+    
+    # print(strat.overall[[nperm]])
+    # print("perm")
+    # print(dim(myperms)[1])
+    # print(MTDTobject$myperms)
+    
+    numTiers = length(unique(strat.overall[[nperm]]$tier))
+    # print("numtiers")
+    # print(c(1:numTiers))
+    # print(strat.overall[[nperm]]$tier)
+    # print(unique(strat.overall[[nperm]]$tier))
     c = strat.overall[[nperm]] %>% 
       dplyr::filter(!strata=="Not processed") %>% 
       dplyr::count(tier) %>% 
       dplyr::mutate(
-        cost=n*tierUnitCosts[c(1:length(unique(strat.overall[[nperm]]$tier)))],
+        cost=n*tierUnitCosts[c(myperms[nperm,][c(1:numTiers)])],
         tier=factor(tier, levels=tierseq)) %>% 
       dplyr::arrange(tier)
     
     print(c)
-    
+
     Costs = dplyr::bind_rows(
       Costs,
       tibble(Tier.Sequence = str_c(MTDTsummary$TSER.summary$Tier.Sequence[nperm] %>% str_split("-") %>% as_vector(), collapse="-"),
