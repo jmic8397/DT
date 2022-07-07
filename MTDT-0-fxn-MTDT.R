@@ -536,10 +536,7 @@ MTperm.summary <- function(MTDTobject){
   tierList = MTDTobject$tierList %>% unlist
   ssercutoffList = MTDTobject$ssercutoffList
   tierUnitCosts = tierUnitCosts
-  # modelclass = NULL
-  # for (i in 1:length(MTDTobject$modelList)){
-  #   modelclass = c(modelclass, class(MTDTobject$modelList[[i]])[1])
-  # }  
+
   
   nperms = dim(myperms)[1]
   ntiers = dim(myperms)[2]
@@ -618,16 +615,19 @@ MTDT.ClassifyR.cost.summary <- function(MTDTobject, tierUnitCosts){
       dplyr::filter(!strata=="Not processed") %>% 
       dplyr::count(tier) %>% 
       dplyr::mutate(
-        cost=n*tierUnitCosts[c(1:length(unique(tier)))],
+        cost=n*tierUnitCosts[c(1:length(unique(strat.overall[[nperm]]$tier)))],
         tier=factor(tier, levels=tierseq)) %>% 
       dplyr::arrange(tier)
     
+    print(c)
+    
     Costs = dplyr::bind_rows(
       Costs,
-      tibble(Tier.Sequence = str_c(c$tier, collapse="-"),
+      tibble(Tier.Sequence = str_c(MTDTsummary$TSER.summary$Tier.Sequence[nperm] %>% str_split("-") %>% as_vector(), collapse="-"),
              Cost.byTier = str_c(paste0("$", c$cost), collapse="-"),
              Cost.Total=sum(c$cost, na.rm=T))
     )
+    print(Costs)
     
   }
 
@@ -641,6 +641,7 @@ MTDT.ClassifyR.cost.summary <- function(MTDTobject, tierUnitCosts){
                   Prop.notretained, Threshold) %>% 
     dplyr::left_join(Costs, by="Tier.Sequence")
   
+  print(TSER.summary)
 
   return(list(TSER.summary = TSER.summary,
               MT.summary = MTperm.summary,

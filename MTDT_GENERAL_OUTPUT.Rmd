@@ -294,6 +294,7 @@ for(results in 1:length(MTDTsummaries)){
     #for each level of the permutation make a circle representing the relative proportion of the level (e.g. retained for each experiment)
     
     for(i in 1:length(df$levelName)){
+      print(nperm,i)
       
       MTDTsummary$TSER.summary$TSA.retained
       
