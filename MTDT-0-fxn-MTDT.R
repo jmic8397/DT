@@ -445,17 +445,23 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
       
       #Retained
       num1 = stra %>% filter(tierstrata == levels(stra$tierstrata)[(((ntier-1)-1)*3)+1]) %>% nrow()
+      num2 = stra %>% filter(tierstrata == levels(stra$tierstrata)[(((ntier-1)-1)*3)+2]) %>% nrow()
+      num3 = stra %>% filter(tierstrata == levels(stra$tierstrata)[(((ntier-1)-1)*3)+3]) %>% nrow() 
+      
+      
       tier = strsplit(levels(stra$tierstrata)[(((ntier-1)-1)*3)+1], '[()]')[[1]][2]
       if(num1>0){
         #finalTier Check -> retain all if final tier
-        if(ntier == ntiers+1 || ((dim(MTlist[[nperm]][[ntier-1]]$TSERcutoff$Stratification)[1] == 0))){
-          num1 = num1 + (stra %>% filter(tierstrata == levels(stra$tierstrata)[(((ntier-1)-1)*3)+3]) %>% nrow() )
+        if(ntier == ntiers+1 || ((dim(MTlist[[nperm]][[ntier]]$TSERcutoff$Stratification)[1] == 0)) ){
+          num1 = num1 + num2 + num3
+          num2 = 0
+          num3 = 0
         }
-      retained = currNode$AddChild(levels(stra$tierstrata)[  (((ntier-1)-1)*3)+1], counter = num1, tier = tier, tierstrata = levels(stra$tierstrata)[(((ntier-1)-1)*3)+1], tierOrder = ntier-1)
+        retained = currNode$AddChild(levels(stra$tierstrata)[  (((ntier-1)-1)*3)+1], counter = num1, tier = tier, tierstrata = levels(stra$tierstrata)[(((ntier-1)-1)*3)+1], tierOrder = ntier-1)
       }
       
+      
       #To Progress
-      num2 = stra %>% filter(tierstrata == levels(stra$tierstrata)[(((ntier-1)-1)*3)+2]) %>% nrow()
       if(num2>0){
       progress = currNode$AddChild(levels(stra$tierstrata)[  (((ntier-1)-1)*3)+2], counter = num2,tier = tier, tierstrata = levels(stra$tierstrata)[(((ntier-1)-1)*3)+2], tierOrder = ntier-1)
       }else{
@@ -464,10 +470,12 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
       }
       
       #Not Processed
-      num3 = stra %>% filter(tierstrata == levels(stra$tierstrata)[(((ntier-1)-1)*3)+3]) %>% nrow() 
       if(num3>0){
-      notprog = currNode$AddChild(levels(stra$tierstrata)[  (((ntier-1)-1)*3)+3], counter = num3,tier = tier, tierstrata = levels(stra$tierstrata)[(((ntier-1)-1)*3)+3], tierOrder = ntier-1)
+        notprog = currNode$AddChild(levels(stra$tierstrata)[  (((ntier-1)-1)*3)+3], counter = num3,tier = tier, tierstrata = levels(stra$tierstrata)[(((ntier-1)-1)*3)+3], tierOrder = ntier-1)
       }
+      
+
+
       
       currNode = progress 
     }
@@ -610,17 +618,10 @@ MTDT.ClassifyR.cost.summary <- function(MTDTobject, tierUnitCosts){
   
   for (nperm in 1:nperms){
     tierseq = MTDTsummary$TSER.summary$Tier.Sequence[nperm] %>% str_split("-") %>% as_vector()
-    
-    # print(strat.overall[[nperm]])
-    # print("perm")
-    # print(dim(myperms)[1])
-    # print(MTDTobject$myperms)
+
     
     numTiers = length(unique(strat.overall[[nperm]]$tier))
-    # print("numtiers")
-    # print(c(1:numTiers))
-    # print(strat.overall[[nperm]]$tier)
-    # print(unique(strat.overall[[nperm]]$tier))
+
     c = strat.overall[[nperm]] %>% 
       dplyr::filter(!strata=="Not processed") %>% 
       dplyr::count(tier) %>% 
