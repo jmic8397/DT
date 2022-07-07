@@ -26,6 +26,7 @@ MTblockClassifyR <- function(data=NULL, id.retained=NULL,
   
   #tier specific error rate?
   TSER <- tser(SSER, sser)
+  
     # print(TSER)
   tserplot = tser_plot(TSER, sser, ssercutoff)
   TSERcutoff <- tser_cutoff(SSER, sser, ssercutoff)
@@ -49,6 +50,13 @@ MTblockClassifyR <- function(data=NULL, id.retained=NULL,
   names(id.retained) <- NULL
   names(id.toprogress) <- NULL
   names(id.notprocessed) <- NULL
+  
+  #Update to user defined threshold
+  if(length(id.toprogress) < 10){
+    print("Less than 10 samples to progress, classifying at current layer!")
+    id.retained = c(id.retained,id.toprogress)
+    id.toprogress = NULL
+  }
 
   
   if(verbose==T){

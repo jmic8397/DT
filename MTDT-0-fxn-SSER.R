@@ -30,70 +30,47 @@ sser_classifyR <- function( MAEobject=NULL,
   print(tier)
   
   #remove Na's for classifyR
-  #not sure which column for subset
+  #this has already been done - does nothing unless samples with missing data exist
   MAECompleteCases = MAEobject[,complete.cases(MAEobject[,,tier]),tier]
   
+  #errorTable
+  errorTable = tibble(SampleID=NULL,sser=NULL)
+  ID.removed = list()
 
-  #Check CV is valid  
-  
-
-  
+  # Check CV is valid
   if(length(unlist(colnames(MAECompleteCases[1]))) <= crossValParams@folds){
     print(length(unlist(colnames(MAECompleteCases[1]))))
-    
-    print("Low row count, unable to use CV")
-    
-    
-    
-    # crossValParams@samplesSplits  = "Leave-k-Out"
-    # crossValParams@folds <- length(unlist(colnames(MAECompleteCases[1])))
-    # crossValParams@permutations <- length(unlist(colnames(MAECompleteCases[1])))
-    # crossValParams@leave <- 1
-    # crossValParams@percentTest <- 1/length(unlist(colnames(MAECompleteCases[1])))
-    DMresults <- runTest(MAECompleteCases, OutcomesTrain=tier, OutcomesTest = tier,measurementsTrain=MAECompleteCases[1:length(unlist(colnames(MAECompleteCases)))/4,,], measurementsTest=MAECompleteCases[length(unlist(colnames(MAECompleteCases)))/4:length(unlist(colnames(MAECompleteCases))),,], outcomesColumns=classes, 
-                          modellingParams = modellingParams[[z]], 
-                          characteristics = characteristics)
-    
-    
+
+    print("Error: Low row count, unable to use CV")
+
   }else{
-    
+
     
     DMresults <- runTests(MAECompleteCases, target=tier, outcomesColumns=classes, 
                           crossValParams = crossValParams, modellingParams = modellingParams[[z]], 
                           characteristics = characteristics)
+    
+  
+  
+  
+    # This gives estimate error rate
+    performance = calcCVperformance(DMresults, performanceType)
+    error = performance(performance)
+   
+    
+    #find NA's
+    SampleIDComplete = names(error$`Sample Error`)
+    SampleIDTotal = rownames(colData(MAEobject))
+    ID.removed = setdiff(SampleIDTotal,SampleIDComplete )
+    # print(ID.removed)
+    
+    #construct Table
+    SampleID = names(error$`Sample Error`)
+    sser = unname(error$`Sample Error`)
+    errorTable = tibble(SampleID,sser)
+    view(errorTable)
+    
   }
-  
-  
-  
-  #if leave > fold size then readjust leave
-  # maxFoldSize = length(unlist(colnames(MAECompleteCases[1]))) /crossValParams@folds
-  # actualFoldSize =  crossValParams@leave
-  # print(maxFoldSize)
-  # print(actualFoldSize)
-  # print(crossValParams)
-  # 
-  # if(actualFoldSize > maxFoldSize){
-  #   print("fold size too big, decreasing leave size")
-  #   crossValParams@leave <- (length(unlist(colnames(MAECompleteCases[1])))/crossValParams@folds)
-  # }
-
-  
-  
-  # This gives estimate error rate
-  performance = calcCVperformance(DMresults, performanceType)
-  error = performance(performance)
-  
-  #find NA's
-  SampleIDComplete = names(error$`Sample Error`)
-  SampleIDTotal = rownames(colData(MAEobject))
-  ID.removed = setdiff(SampleIDTotal,SampleIDComplete )
-  # print(ID.removed)
-  
-  #construct Table
-  SampleID = names(error$`Sample Error`)
-  sser = unname(error$`Sample Error`)
-  errorTable = tibble(SampleID,sser)
-  view(errorTable)
   
   if (verbose==T){
     if (length(ID.removed)>0) {
@@ -114,7 +91,13 @@ tser <- function(SSER=NULL, col_name=NULL){
   library(tidyverse)
   library(rms)
   
+  
+  
   SSER=SSER$SSER
+  
+  print(length(SSER))
+  
+  if(length(SSER)!=0){
   
   #cutoffs are the average error rates for samples
   cutoffs = SSER %>% 
@@ -122,14 +105,19 @@ tser <- function(SSER=NULL, col_name=NULL){
     distinct() %>% 
     as_vector() %>% 
     sort()
+  
 
   names(cutoffs) <- NULL
-  cutoffs
   
   err = dplyr::tibble(tser=NULL, cutoff=NULL)
   n = vector()
   cindices = vector()
   briers = vector()
+  
+  print(length(cutoffs))
+  }
+  
+  if(length(SSER)!=0){
   
   #for each cutoff 
   for (i in 1:length(cutoffs)){
@@ -148,28 +136,60 @@ tser <- function(SSER=NULL, col_name=NULL){
       dplyr::mutate(cutoff=threshold)
 
     
+    #if total-retained < 10 then all should be retained
+    # if(( length(SSER$SampleID) - dim(df.sser)[1]) < 10){
+    # 
+    #   df.sser = SSER$sser
+    # }
+    # 
+    
     #n retained = rows left in sser <= threshold error
     n = c(n, dim(df.sser)[1])
     err = dplyr::bind_rows(err, tser)
   }
+  }
   
-  TSER = tibble(
-    Index = rep(as_label(enquo(col_name)), length(cutoffs)),
-    cutoff = cutoffs,
-    tse = err %>%
-      dplyr::group_by(cutoff) %>% 
-      #tser = average tser
-      dplyr::summarise(tser=mean(tser, na.rm=T)) %$% 
-      tser,
-    n_total = dim(SSER)[1],
-    n_retained = n,
-    prop_retained = n_retained/n_total,
-    n_progress = n_total-n_retained,
-    prop_progress = n_progress/n_total,
-  )
+    
+    #assumes complete cases -> early tree termination if current tier 'to-progress' for given threshold is < 10 samples
+    #minimum CV value to be passed in by user
+  #   if(n_total-n < 10){
+  #     
+  #   
+  # }
+  
+  if(length(SSER)!=0){
+    TSER = tibble(
+      Index = rep(as_label(enquo(col_name)), length(cutoffs)),
+      cutoff = cutoffs,
+      tse = err %>%
+        dplyr::group_by(cutoff) %>% 
+        #tser = average tser
+        dplyr::summarise(tser=mean(tser, na.rm=T)) %$% 
+        tser,
+      n_total = dim(SSER)[1],
+      n_retained = n,
+      prop_retained = n_retained/n_total,
+      n_progress = n_total-n_retained,
+      prop_progress = n_progress/n_total,
+      )
+  }
+  
+  else{
+    TSER = tibble(
+      Index = as_label(enquo(col_name)),
+      cutoff = 1,
+      tse = 1,
+      n_total = 0,
+      n_retained = 0,
+      prop_retained = 0,
+      n_progress = 0,
+      prop_progress = 0)
+  }
+  
+  print(TSER)
   
   return(TSER)
-}
+  }
 
 
 # Plotting TSE - overall, included and excluded from the cutoff
@@ -179,13 +199,16 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
   Removed = as.data.frame(SSER$removed)
   SSER=SSER$SSER
   
+  if(length(SSER)>0){
+  
   id.retained = SSER %>% 
     dplyr::filter({{col_name}}<=mycutoff) %>% 
     dplyr::select(SampleID) %>%
     as_vector() %>% unique()
   
   #if finalTier of tree, add all samples to retained
-  if(mycutoff==1){
+  #If less than 10 to progress, add all samples to retained
+  if(mycutoff==1 || ( (dim(SSER)[1]-length(id.retained)) < 10) ){
     id.retained = c(id.retained,as_vector(Removed))
   }
 
@@ -197,6 +220,7 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
   n=dim(SSER)[1]
   n_retained=length(id.retained)
   n_progress=n-n_retained
+  
 
   
   TSER_overall = SSER %>% 
@@ -217,10 +241,34 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
     dplyr::mutate(strata="To progress",
                   n=n_progress)
   
+  }else{
+    
+    id.retained = NULL
+    
+    id.toprogress = NULL
+    
+    n=0
+    n_retained=0
+    n_progress=0
+    
+    
+    
+    TSER_overall =  tibble(tser=0,strata="Overall",n=0)
+    
+    TSER_retained = tibble(tser=0,strata="Retained",n=0)
+    
+    TSER_progress = tibble(tser=0,strata="To progress",n=0)
+
+    
+  }
+  
   TSER_cutoff = bind_rows(TSER_overall, TSER_retained, TSER_progress) %>% 
     dplyr::mutate(
       strata=factor(strata, levels=c("Overall", "Retained", "To progress"))
     )
+  
+  
+  if(length(SSER)>0){
   
   strata = dplyr::bind_rows(
     SSER %>% 
@@ -235,11 +283,29 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
       dplyr::mutate(strata = "Not processed")
     ) %>%
     dplyr::mutate(strata=factor(strata, levels=c("Retained", "To progress", "Not processed")))
-
+  
   
   TSER_table = TSER_cutoff %>% 
     dplyr::group_by(strata) %>% 
     dplyr::summarise(mean(tser, na.rm=T), n=mean(n))
+  
+  }else{
+    
+    # strata = dplyr::bind_rows(
+    #     dplyr::mutate(strata = "Retained"),
+    #     dplyr::mutate(strata = "To progress"),
+    #     dplyr::mutate(strata = "Not processed")
+    # ) %>%
+    #   dplyr::mutate(strata=factor(strata, levels=c("Retained", "To progress", "Not processed")))
+    # 
+    TSER_table = TSER_cutoff %>% 
+      dplyr::group_by(strata) %>% 
+      dplyr::summarise(0, n=0)
+    
+  }
+
+  
+
   
   return(list(TSER_cutoff=TSER_cutoff,
               Stratification=strata,
@@ -313,6 +379,8 @@ strat_plot <- function(TSER_cutoff=NULL, tier=""){
     theme(panel.background = element_blank(),
           axis.text.x = element_blank(),
           aspect.ratio=1/10)
+  
+  
   return(p)
 }
 

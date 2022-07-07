@@ -86,6 +86,7 @@ At each node of the tree, a machine learning model is used to establish the samp
 #Choose the MultiAssayExperiment Object for performing classification   
 MultiAssayExperiment = melanomaAssaysNorm
 
+
   
 #Properties for weighting 
 #(E.g. # of individuals retained or total cost of all tests performed at a given tier)
@@ -105,7 +106,7 @@ tierList = c( "microRNA"  ,    "NanoString"   , "iTRAQabsolute")
 #Sample specific error cutoffs 
 #(E.g. x | if the sample specific error of cross validated prediction is > x, the sample will 'progress' to the next tier. Lower cutoff = higher retention generally)
 # ssercutoffList= list(c(0.4, 0.4, 0.4),c(0.6, 0.6, 0.6)) # -> For multi-threshold analysis
-ssercutoffList= list(c(0.4, 0.4, 0.4))
+ssercutoffLists= list(c(0.4, 0.4, 0.4),c(0.6, 0.6, 0.6))
 
 #Tier costs (e.g. price of performing test for an individual), Clinical also last index
 tierUnitCosts = c(100, 500, 1000)
@@ -192,7 +193,7 @@ verbose=3
 
 ## Main Code
 
-
+ 
 ```{r, echo=FALSE}
 
 #Call general function with all inputs needed for ClassifyR
@@ -209,16 +210,20 @@ classColumn = grep(classes, colnames(colData(MultiAssayExperiment)))
 retainList = !is.na(colData(MultiAssayExperiment)[classColumn])
 MultiAssayExperiment = MultiAssayExperiment[,retainList & !is.na(retainList),]
 
-#Subset specified experiments from tierList (e.g. we only want to use 2 assays for now)
+#Subset specified experiments from tierList 
 MultiAssayExperiment = MultiAssayExperiment[,,tierList[tierList != "clinical"]]
+
+#Subset complete cases only for all assays
+#If this is removed, 'not-processed' samples will exist at some tiers for NA's
+MultiAssayExperiment = MultiAssayExperiment[,complete.cases(MultiAssayExperiment),]
 
 MTDTsummaries = list()
 MTDTresultsList = list()
 
-for(cutoff in 1:length(ssercutoffList)){
+for(cutoff in 1:length(ssercutoffLists)){
   
   MTDTresults = GeneralMTDT(MultiAssayExperiment,
-                        tierList,fixedTier,ssercutoffList[[cutoff]],
+                        tierList,fixedTier,ssercutoffLists[[cutoff]],
                         tierUnitCosts = tierUnitCosts , performanceType = performanceType,
                        runtestorruntests = runtestorruntests ,classes, crossValParams = crossValParams, modellingParams = modellingParams, characteristics = characteristics,  seed, verbose)
   

@@ -60,7 +60,7 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
       
       #create a new list for results
       MTunits = list()
-      
+    
       #create list for # retained for this permutation
       id.retained = list()
       
@@ -136,11 +136,37 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
         notprocessed = MTunits[[ntier]]$id$id.notprocessed %>% unique() %>% length()
         total = retained+toprogress+notprocessed
         processed=retained+toprogress
+        
+        
+        #not enough samples - terminate early
+        print(paste0("Size Check"))
+        print(paste0(total - retained))
+        
+        # if(total - retained < 10){
+        #   
+        # }
+        # 
+
+        
         print(paste0("    Total = ", total,  ""))
-        print(paste0("    Processed = ", processed, 
+        print(paste0("    Processed =", processed, 
                      " (", retained, " retained, ",
                      toprogress, " to progress to next tier)"))
         print(paste0("    Not processed = ", notprocessed))
+        
+        #not enough samples for another tier
+        #to set user defined threshold
+        # if(total - retained < 10 ){
+        #   print(paste0("Less than 10 to progress, Tree terminating early"))
+        #   for(remainingTier in ntier:dim(myperms)[2]){
+        #     print(remainingTier)
+        #   MTunits[[remainingTier]]$id$id.retained = c(MTunits[[remainingTier]]$id$id.retained,MTunits[[remainingTier]]$id$id.toprogress,MTunits[[remainingTier]]$id$id.notprocessed)
+        #   MTunits[[remainingTier]]$id$id.toprogress = tibble(SampleID=NULL)
+        #   }
+        #   break
+        # }
+
+        
       }
       
       MTlist[[nperm]] = MTunits
@@ -196,7 +222,6 @@ MTDT.algmCost <- function(dataList, rsmpList, tierList,
     rsmpmethod = rsmpList[[z]]
     tier = tierList[[z]]
     ssercutoff = ssercutoffList[[z]]
-    modelclass = class(model)
     
     
     #e.g. (1) Clin-Histo-Nano: <Clin>
@@ -210,9 +235,11 @@ MTDT.algmCost <- function(dataList, rsmpList, tierList,
       crossValParams = crossValParams, modellingParams = modellingParams, characteristics = characteristics,
       performanceType = performanceType,seed=seed, verbose=verbose,finalTier,classIndex, z)
 
-
+    
         
     id.retained = c(id.retained, MTunits[[ntier]]$id$id.retained)
+    
+
     
     retained = MTunits[[ntier]]$id$id.retained %>% unique() %>% length()
     toprogress = MTunits[[ntier]]$id$id.toprogress %>% unique() %>% length()
@@ -224,6 +251,8 @@ MTDT.algmCost <- function(dataList, rsmpList, tierList,
                  " (", retained, " retained, ",
                  toprogress, " to progress to next tier)"))
     print(paste0("    Not processed = ", notprocessed))
+   
+    
   }
   
   MTlist[[nperm]] = MTunits
