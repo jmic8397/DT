@@ -34,7 +34,7 @@ sser_classifyR <- function( MAEobject=NULL,
   MAECompleteCases = MAEobject[,complete.cases(MAEobject[,,tier]),tier]
   
   #errorTable
-  errorTable = tibble(SampleID=NULL,sser=NULL)
+  errorTable = tibble(SampleID=character(),sser=double())
   ID.removed = list()
 
   # Check CV is valid
@@ -95,9 +95,10 @@ tser <- function(SSER=NULL, col_name=NULL){
   
   SSER=SSER$SSER
   
-  print(length(SSER))
+  print(length(rownames(SSER)))
+  print(SSER)
   
-  if(length(SSER)!=0){
+  if(length(rownames(SSER))!=0){
   
   #cutoffs are the average error rates for samples
   cutoffs = SSER %>% 
@@ -117,7 +118,7 @@ tser <- function(SSER=NULL, col_name=NULL){
   print(length(cutoffs))
   }
   
-  if(length(SSER)!=0){
+  if(length(rownames(SSER))!=0 ){
   
   #for each cutoff 
   for (i in 1:length(cutoffs)){
@@ -157,7 +158,7 @@ tser <- function(SSER=NULL, col_name=NULL){
   #   
   # }
   
-  if(length(SSER)!=0){
+  if(length(rownames(SSER))!=0){
     TSER = tibble(
       Index = rep(as_label(enquo(col_name)), length(cutoffs)),
       cutoff = cutoffs,
@@ -253,11 +254,11 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
     
     
     
-    TSER_overall =  tibble(tser=0,strata="Overall",n=0)
+    TSER_overall =  tibble(strata="Overall", mean = 0, n=0)
     
-    TSER_retained = tibble(tser=0,strata="Retained",n=0)
+    TSER_retained = tibble(strata="Retained",mean = 0,n=0)
     
-    TSER_progress = tibble(tser=0,strata="To progress",n=0)
+    TSER_progress = tibble(strata="To progress",mean = 0,n=0)
 
     
   }
@@ -284,6 +285,7 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
     ) %>%
     dplyr::mutate(strata=factor(strata, levels=c("Retained", "To progress", "Not processed")))
   
+  print(strata)
   
   TSER_table = TSER_cutoff %>% 
     dplyr::group_by(strata) %>% 
@@ -291,13 +293,10 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
   
   }else{
     
-    # strata = dplyr::bind_rows(
-    #     dplyr::mutate(strata = "Retained"),
-    #     dplyr::mutate(strata = "To progress"),
-    #     dplyr::mutate(strata = "Not processed")
-    # ) %>%
-    #   dplyr::mutate(strata=factor(strata, levels=c("Retained", "To progress", "Not processed")))
-    # 
+    strata = tibble(SampleID=character(),sser=double(),strata=factor(),Removed=character())
+    print(strata)
+    print(colnames(strata))
+    
     TSER_table = TSER_cutoff %>% 
       dplyr::group_by(strata) %>% 
       dplyr::summarise(0, n=0)
@@ -358,7 +357,10 @@ tsercutoff_plot <- function(TSERcutoff){
 
 strat_plot <- function(TSER_cutoff=NULL, tier=""){
   
+  print(TSER_cutoff)
+  
   stra = TSER_cutoff$Stratification
+  print(stra)
   IDnm=colnames(stra)[1]
   ID_nm=IDnm
   ID=stra[, 1]

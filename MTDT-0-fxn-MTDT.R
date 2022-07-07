@@ -269,225 +269,6 @@ MTDT.algmCost <- function(dataList, rsmpList, tierList,
 
 
 
-MTDT.summary <- function(MTDTobject){
-  
-  myperms=MTDTobject$myperms
-  MTlist=MTDTobject$MTlist
-  tierList=MTDTobject$tierList
-  dataList=MTDTobject$dataList
-  
-  if(class(dataList) == "MultiAssayExperiment"){
-    dataList = colData(dataList)
-  }
-  
-  ntiers=dim(myperms)[2]
-  nperms=dim(myperms)[1]
-  
-  tserplots = list()
-  stratplots = list()
-  treeplots = list()
-  stratplots.prop = list()
-  TSERcutoffplots = list()
-  TSERcutoffplots.tiers = list()
-  
-  TSER.overall <- list()
-  strat.overall <- list()
-  id <- list()
-  tiersequence <- vector()
-  TSERoverall.retained <- vector()
-  TSERoverall.notretained <- vector()
-  N.retained <- vector()
-  N.notretained <- vector()
-  
-  for (nperm in 1:nperms){
-    
-    id.retained = NULL
-    id.all = NULL
-    id.notretained = NULL
-    tierlabel = NULL
-    seqname = paste0("Sequence.", nperm)
-    TSERcutoffplots[[nperm]] = seqname
-    
-    TSER.retained = NULL
-    TSER.notretained = NULL
-    
-    for (ntier in 1:ntiers){
-      
-      id.retained = c(id.retained,
-                      MTlist[[nperm]][[ntier]]$id$id.retained)
-      id.retained = id.retained %>% unique()
-      id.all = c(id.all,
-                 MTlist[[nperm]][[ntier]]$id$id.retained,
-                 MTlist[[nperm]][[ntier]]$id$id.toprogress,
-                 MTlist[[nperm]][[ntier]]$id$id.notprocessed)
-      id.all = id.all %>% unique()
-      id.notretained = setdiff(id.all, id.retained)
-      tierlabel = c(tierlabel, tierList[[myperms[nperm, ntier]]])
-      
-      
-      IDnm = colnames(dataList[[ntier]])[1]
-      ID_nm = sym(IDnm)
-
-      
-      TSER.retained$y.good = TSER.retained$y.good %>% as.factor() %>% as.numeric()-1
-      MTlist[[nperm]][[ntier]]$SSER$phat_rsmp$y.good = MTlist[[nperm]][[ntier]]$SSER$phat_rsmp$class %>% as.factor() %>% as.numeric()-1
-      
-      
-      TSER.retained = dplyr::bind_rows(
-        TSER.retained,
-        MTlist[[nperm]][[ntier]]$SSER$phat_rsmp %>% 
-          dplyr::filter(!!ID_nm %in% id.retained)
-      )
-      TSER.notretained = dplyr::bind_rows(
-        TSER.notretained,
-        MTlist[[nperm]][[ntier]]$SSER$phat_rsmp %>%
-          dplyr::filter(!!ID_nm %in% id.notretained)
-      )
-    }
-    
-    
-    tierlabel = paste(tierlabel, collapse = '-')
-    
-    id[[nperm]] = list(id.retained=id.retained, 
-                       id.notretained=id.notretained)
-    tiersequence[[nperm]] = tierlabel
-    
-    
-    ynm = colnames(TSER.retained)[2]
-    y_nm = sym(ynm)
-    
-    TSER.overall[[nperm]] = dplyr::bind_rows(
-      TSER.retained %>% 
-        dplyr::group_by(rpt) %>% 
-        dplyr::summarise(tser=(1-mean(yhatrsmp==class, na.rm=T))) %>% 
-        dplyr::mutate(strata=factor("Retained", levels=c("Retained", "Not retained"))),
-      TSER.notretained %>% 
-        dplyr::group_by(rpt) %>% 
-        dplyr::summarise(tser=(1-mean(yhatrsmp==class, na.rm=T))) %>% 
-        dplyr::mutate(strata=factor("Not retained", levels=c("Retained", "Not retained")))
-    )
-    
-    
-    tserplots[[nperm]] = tsercutoff_plot(TSER.overall[[nperm]]) + 
-      ggtitle(paste0("Overall: ", tierlabel))
-    
-    for (ntier in 1:ntiers){
-      TSERcutoffplots.tiers[[ntier]] = MTlist[[nperm]][[ntier]]$plots$tsercutoffplot +
-        ggtitle(tierList[[myperms[nperm, ntier]]])
-      
-    }
-  
-    TSERcutoffplots[[nperm]] <- TSERcutoffplots.tiers
-    
-    n.retained=0
-    lvls = NULL
-    stra = NULL
-    
-    for (ntier in 1:ntiers){
-      n.from=n.retained + 1
-      n.end = n.retained +
-        dim(MTlist[[nperm]][[ntier]]$TSERcutoff$Stratification)[1]
-      
-      stra.MTunit <- MTlist[[nperm]][[ntier]]$TSERcutoff$Stratification %>% 
-        dplyr::arrange(strata, sser) %>% 
-        dplyr::mutate(tier=tierList[[myperms[nperm, ntier]]]) %>% 
-        tibble::tibble(., ID = n.from:n.end)
-      n.retained = n.retained +
-        MTlist[[nperm]][[ntier]]$TSERcutoff$Stratification %>% 
-        dplyr::filter(strata=="Retained") %>% nrow()
-      
-      
-      stra$class = stra$class  %>%  as.factor() %>% as.numeric()-1
-      stra$yhat = stra$yhat %>%  as.factor() %>% as.numeric()-1
-      
-      stra.MTunit$class = stra.MTunit$class %>%  as.factor() %>%as.numeric()-1
-      stra.MTunit$yhat = stra.MTunit$yhat %>% as.factor() %>%as.numeric()-1
-      
-      stra = dplyr::bind_rows(stra,  stra.MTunit)
-      
-      lvls = c(lvls,
-               paste0("Retained (", tierList[[myperms[nperm, ntier]]], ")"), 
-               paste0("To progress (", tierList[[myperms[nperm, ntier]]], ")"),
-               paste0("Not processed (", tierList[[myperms[nperm, ntier]]], ")"))
-    }
-    
-
-    stra = stra %>% 
-      dplyr::mutate(
-        tierstrata=paste0(strata, " (", tier, ")"),
-        tierstrata=factor(tierstrata, levels=lvls)) %>% 
-      dplyr::arrange(ID, tierstrata, sser)
-    
-    stratplots.prop[[nperm]] = stra %>% 
-      ggplot() +
-      geom_tile(aes(y=tierstrata, x=ID, fill=sser), colour="black") +
-      ylab("") + xlab("") + ggtitle(paste("Sequence:", tierlabel, " Threshold: ", )) +
-      scale_fill_gradient(low="black", high="white") +
-      theme(panel.background = element_blank(),
-            axis.text.x = element_blank(),
-            aspect.ratio=1/4)
-    
-    library(dplyr)
-    
-    #create tree graphic?
-    library(data.tree)
-
-    IDnm = colnames(stra)[1]
-    ID_nm = sym(IDnm)
-    
-    stra = stra %>% 
-      dplyr::arrange(strata)
-    idsort = stra[[1]] %>% unique()
-    
-    stratplots[[nperm]] = stra %>% 
-      dplyr::arrange(strata) %>% 
-      dplyr::mutate(ID=factor(!!ID_nm, levels=idsort)) %>% 
-      ggplot() +
-      geom_tile(aes(y=tierstrata, x=ID, fill=sser), colour="black") +
-      ylab("") + xlab("") + ggtitle(paste("Sequence:", tierlabel)) +
-      scale_fill_gradient(low="black", high="white") +
-      theme(panel.background = element_blank(),
-            axis.text.x = element_blank(),
-            aspect.ratio=1/4)
-    
-    strat.overall[[nperm]] = stra
-    
-    TSERoverall.retained[[nperm]] = TSER.overall[[nperm]] %>% 
-      dplyr::filter(strata=="Retained") %>% 
-      dplyr::group_by(strata) %>% 
-      dplyr::summarise(mean=mean(tser, na.rm=T)) %$% mean
-    
-    TSERoverall.notretained[[nperm]] = TSER.overall[[nperm]] %>% 
-      dplyr::filter(strata=="Not retained") %>% 
-      dplyr::group_by(strata) %>% 
-      dplyr::summarise(mean=mean(tser, na.rm=T)) %$% mean
-    N.retained[[nperm]] = id[[nperm]]$id.retained %>% length()
-    N.notretained[[nperm]] = id[[nperm]]$id.notretained %>% length()
-    
-  }
-  
-  
-  TSER.summary <- tibble::tibble(
-    Tier.Sequence = tiersequence,
-    TSA.retained = (1-TSERoverall.retained),
-    N.retained = N.retained,
-    TSA.notretained = (1-TSERoverall.notretained),
-    N.notretained = N.notretained
-  )
-  
-
-  return(list(TSER.summary = TSER.summary,
-              IDs = id,
-              Results.TSER.overall = TSER.overall,
-              Results.stratification = strat.overall,
-              Plots.TSER = tserplots,
-              Plots.TSERcutoff = TSERcutoffplots,
-              Plots.Tree = treeplots,
-              Plots.stratification = stratplots,
-              Plots.strat.prop = stratplots.prop))
-}
-
-
 
 MTDT.ClassifyR.summary <- function(MTDTobject){
 
@@ -565,8 +346,8 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
       )
     }
     
-    print(TSER.retained)
-    print(TSER.notretained)
+    # print(TSER.retained)
+    # print(TSER.notretained)
     
 
     tierlabel = paste(tierlabel, collapse = '-')
@@ -605,14 +386,24 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
     stra = NULL
 
     for (ntier in 1:ntiers){
+      print(ntier)
+      
       n.from=n.retained + 1
       n.end = n.retained +
         dim(MTlist[[nperm]][[ntier]]$TSERcutoff$Stratification)[1]
+
+      if(dim(MTlist[[nperm]][[ntier]]$TSERcutoff$Stratification)[1] == 0){
+        print("Empty, skipping tier")
+        next
+      }
       
       stra.MTunit <- MTlist[[nperm]][[ntier]]$TSERcutoff$Stratification %>% 
         dplyr::arrange(strata, sser) %>% 
         dplyr::mutate(tier=tierList[[myperms[nperm, ntier]]]) %>% 
         tibble::tibble(., ID = n.from:n.end)
+      
+      print(stra.MTunit)
+      
       n.retained = n.retained +
         MTlist[[nperm]][[ntier]]$TSERcutoff$Stratification %>% 
         dplyr::filter(strata=="Retained") %>% nrow()
@@ -804,64 +595,6 @@ MTperm.summary <- function(MTDTobject){
 }
 
 
-MTDT.cost.summary <- function(MTDTobject, tierUnitCosts){
-  
-  MTDTsummary = MTDT.summary(MTDTobject)
-  MTperm.summary = MTperm.summary(MTDTobject)
-  strat.overall = MTDTsummary$Results.stratification
-  
-  myperms = MTDTobject$myperms
-  tierList = MTDTobject$tierList
-  ntiers = dim(myperms)[2]
-  nperms = MTDTsummary$Results.stratification %>% length()
-  Costs = NULL
-  
-  if(length(tierUnitCosts)!=ntiers) return(print("length of tierUnitCost not equal to number of tiers"))
-  
-  for (nperm in 1:nperms){
-    tierseq = MTDTsummary$TSER.summary$Tier.Sequence[nperm] %>% str_split("-") %>% as_vector()
-    c = strat.overall[[nperm]] %>% 
-      dplyr::filter(!strata=="Not processed") %>% 
-      dplyr::count(tier) %>% 
-      dplyr::mutate(
-        cost=n*tierUnitCosts,
-        tier=factor(tier, levels=tierseq)) %>% 
-      dplyr::arrange(tier)
-    
-    Costs = dplyr::bind_rows(
-      Costs,
-      tibble(Tier.Sequence = str_c(c$tier, collapse="-"),
-             Cost.byTier = str_c(paste0("$", c$cost), collapse="-"),
-             Cost.Total=sum(c$cost, na.rm=T))
-    )
-  }
-  
-  TSER.summary = MTDTsummary$TSER.summary %>% 
-    dplyr::mutate(
-      N.Total = N.retained + N.notretained,
-      Prop.notretained = N.notretained/N.Total) %>% 
-    dplyr::select(Tier.Sequence, 
-                  TSA.retained, TSA.notretained,
-                  N.Total, N.retained, N.notretained, 
-                  Prop.notretained,Threshold ) %>% 
-    dplyr::left_join(Costs, by="Tier.Sequence")
-  
-
-  return(list(TSER.summary = TSER.summary,
-              MT.summary = MTperm.summary,
-              IDs = MTDTsummary$IDs,
-              Results.TSA.retained.overall = MTDTsummary$Results.TSER.overall,
-              Results.stratification = MTDTsummary$Results.stratification,
-              Plots.TSER = MTDTsummary$Plots.TSER,
-              Plots.TSERcutoff = MTDTsummary$Plots.TSERcutoff,
-              Plots.Tree = MTDTsummary$Plots.Tree, 
-              Plots.stratification = MTDTsummary$Plots.stratification,
-              Plots.strat.prop = MTDTsummary$Plots.strat.prop))
-  
-}
-
-
-
 
 MTDT.ClassifyR.cost.summary <- function(MTDTobject, tierUnitCosts){
   
@@ -880,11 +613,12 @@ MTDT.ClassifyR.cost.summary <- function(MTDTobject, tierUnitCosts){
   
   for (nperm in 1:nperms){
     tierseq = MTDTsummary$TSER.summary$Tier.Sequence[nperm] %>% str_split("-") %>% as_vector()
+    print(strat.overall[[nperm]])
     c = strat.overall[[nperm]] %>% 
       dplyr::filter(!strata=="Not processed") %>% 
       dplyr::count(tier) %>% 
       dplyr::mutate(
-        cost=n*tierUnitCosts,
+        cost=n*tierUnitCosts[c(1:length(unique(tier)))],
         tier=factor(tier, levels=tierseq)) %>% 
       dplyr::arrange(tier)
     
