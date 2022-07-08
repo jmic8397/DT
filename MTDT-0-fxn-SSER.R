@@ -94,9 +94,7 @@ tser <- function(SSER=NULL, col_name=NULL){
   
   
   SSER=SSER$SSER
-  
-  print(length(rownames(SSER)))
-  print(SSER)
+
   
   if(length(rownames(SSER))!=0){
   
@@ -115,7 +113,7 @@ tser <- function(SSER=NULL, col_name=NULL){
   cindices = vector()
   briers = vector()
   
-  print(length(cutoffs))
+
   }
   
   if(length(rownames(SSER))!=0 ){
@@ -157,25 +155,44 @@ tser <- function(SSER=NULL, col_name=NULL){
   #     
   #   
   # }
+
+
+  
   
   if(length(rownames(SSER))!=0){
-    TSER = tibble(
-      Index = rep(as_label(enquo(col_name)), length(cutoffs)),
-      cutoff = cutoffs,
-      tse = err %>%
-        dplyr::group_by(cutoff) %>% 
-        #tser = average tser
-        dplyr::summarise(tser=mean(tser, na.rm=T)) %$% 
-        tser,
-      n_total = dim(SSER)[1],
-      n_retained = n,
-      prop_retained = n_retained/n_total,
-      n_progress = n_total-n_retained,
-      prop_progress = n_progress/n_total,
-      )
+    if(length(dim(SSER)[1])-length(n) >= 10){
+      TSER = tibble(
+        Index = rep(as_label(enquo(col_name)), length(cutoffs)),
+        cutoff = cutoffs,
+        tse = err %>%
+          dplyr::group_by(cutoff) %>% 
+          #tser = average tser
+          dplyr::summarise(tser=mean(tser, na.rm=T)) %$% 
+          tser,
+        n_total = dim(SSER)[1],
+        n_retained = n,
+        prop_retained = n_retained/n_total,
+        n_progress = n_total-n_retained,
+        prop_progress = n_progress/n_total,
+        )
+      }else{
+        TSER = tibble(
+          Index = rep(as_label(enquo(col_name)), length(cutoffs)),
+          cutoff = cutoffs,
+          tse = err %>%
+            dplyr::group_by(cutoff) %>% 
+            #tser = average tser
+            dplyr::summarise(tser=mean(tser, na.rm=T)) %$% 
+            tser,
+          n_total = dim(SSER)[1],
+          n_retained = n_total,
+          prop_retained = 1,
+          n_progress = n_total-n_total,
+          prop_progress = 0,
+        )
+      }
   }
-  
-  else{
+if(length(rownames(SSER))==0){
     TSER = tibble(
       Index = as_label(enquo(col_name)),
       cutoff = 1,
@@ -187,8 +204,7 @@ tser <- function(SSER=NULL, col_name=NULL){
       prop_progress = 0)
   }
   
-  print(TSER)
-  
+
   return(TSER)
   }
 
@@ -210,7 +226,7 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
   #if finalTier of tree, add all samples to retained
   #If less than 10 to progress, add all samples to retained
   if(mycutoff==1 || ( (dim(SSER)[1]-length(id.retained)) < 10) ){
-    id.retained = c(id.retained,as_vector(Removed))
+    id.retained = SSER %>% select(SampleID) %>% as_vector() %>% unique()
   }
 
   
@@ -285,7 +301,7 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
     ) %>%
     dplyr::mutate(strata=factor(strata, levels=c("Retained", "To progress", "Not processed")))
   
-  print(strata)
+  # print(strata)
   
   TSER_table = TSER_cutoff %>% 
     dplyr::group_by(strata) %>% 
@@ -294,8 +310,8 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier){
   }else{
     
     strata = tibble(SampleID=character(),sser=double(),strata=factor(),Removed=character())
-    print(strata)
-    print(colnames(strata))
+    # print(strata)
+    # print(colnames(strata))
     
     TSER_table = TSER_cutoff %>% 
       dplyr::group_by(strata) %>% 
@@ -342,6 +358,7 @@ tser_plot <- function(TSER, col_name, mycutoff) {
 
 tsercutoff_plot <- function(TSERcutoff){
 
+  #Remove this if retaining entries with missing values
   TSERcutoff = TSERcutoff %>% filter(TSERcutoff$strata == "To progress" | TSERcutoff$strata == "Retained")
   p = TSERcutoff %>%
     ggplot() +
@@ -357,10 +374,10 @@ tsercutoff_plot <- function(TSERcutoff){
 
 strat_plot <- function(TSER_cutoff=NULL, tier=""){
   
-  print(TSER_cutoff)
+  # print(TSER_cutoff)
   
   stra = TSER_cutoff$Stratification
-  print(stra)
+  # print(stra)
   IDnm=colnames(stra)[1]
   ID_nm=IDnm
   ID=stra[, 1]

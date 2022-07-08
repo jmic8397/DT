@@ -114,7 +114,7 @@ tierUnitCosts = c(100, 500, 1000)
 #Which tier to fix as first in Tree? (If any)
 # e.g. fixedTier = "Clinical"
 # fixedTier = "clinical"
-fixedTier = NULL
+fixedTier = "microRNA"
 
 #Choose whether CV needed?
 #runtest() or runtests()? 

@@ -626,7 +626,7 @@ MTDT.ClassifyR.cost.summary <- function(MTDTobject, tierUnitCosts){
       dplyr::filter(!strata=="Not processed") %>% 
       dplyr::count(tier) %>% 
       dplyr::mutate(
-        cost=n*tierUnitCosts[c(myperms[nperm,][c(1:numTiers)])],
+        cost=n*tierUnitCosts[unlist(c(myperms[nperm,][c(1:numTiers)]))],
         tier=factor(tier, levels=tierseq)) %>% 
       dplyr::arrange(tier)
     
