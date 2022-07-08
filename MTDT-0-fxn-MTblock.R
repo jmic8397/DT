@@ -10,7 +10,7 @@
 MTblockClassifyR <- function(data=NULL, id.retained=NULL,  
                      ssercutoff=0.2, tier = NULL, plotlabel = "",
                     runtestorruntests,classes = NULL, crossValParams = NULL, modellingParams = NULL, characteristics = NULL,
-                    performanceType = "Sample Error", seed=1, verbose=F, finalTier,  classIndex, z){
+                    performanceType = "Sample Error", seed=1, verbose=F, finalTier,  classIndex, minTierSize = 10, z){
   
   errormessages = NULL
   
@@ -21,7 +21,7 @@ MTblockClassifyR <- function(data=NULL, id.retained=NULL,
     SSER <- sser_classifyR( MAEobject=data,
                      seed=seed, classes=classes, tier = tier, crossValParams = crossValParams, 
                      modellingParams =modellingParams, characteristics = characteristics, performanceType = performanceType,
-                     verbose=verbose, classIndex,  z)
+                     verbose=verbose, classIndex, minTierSize = minTierSize,  z)
   # )
   
   #tier specific error rate?
@@ -29,7 +29,7 @@ MTblockClassifyR <- function(data=NULL, id.retained=NULL,
   
     # print(TSER)
   tserplot = tser_plot(TSER, sser, ssercutoff)
-  TSERcutoff <- tser_cutoff(SSER, sser, ssercutoff)
+  TSERcutoff <- tser_cutoff(SSER, sser, ssercutoff, minTierSize)
   tsercutoffplot = tsercutoff_plot(TSERcutoff$TSER_cutoff)
   stratplot = strat_plot(TSERcutoff, plotlabel)
   
@@ -52,8 +52,8 @@ MTblockClassifyR <- function(data=NULL, id.retained=NULL,
   names(id.notprocessed) <- NULL
   
   #Update to user defined threshold
-  if(length(id.toprogress) < 10){
-    print("Less than 10 samples to progress, classifying at current layer!")
+  if(length(id.toprogress) < minTierSize){
+    print("Not enough samples to progress, classifying at current layer!")
     id.retained = c(id.retained,id.toprogress)
     id.toprogress = NULL
   }

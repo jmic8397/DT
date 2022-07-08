@@ -4,7 +4,7 @@ GeneralMTDT <- function(MultiAssayExperiment,
                       ssercutoffList,tierUnitCosts = c(100, 500, 1000), 
                       performanceType = "Sample Error", runtestorruntests = "runtest",
                       classes = NULL, crossValParams = NULL, modellingParams = NULL, characteristics = NULL,
-                      includeClinical = FALSE, seed=1, verbose=F){
+                      minTierSize = 10, seed=1, verbose=F){
 
   
 #priceList has price for each sample of each model
@@ -15,7 +15,7 @@ GeneralMTDT <- function(MultiAssayExperiment,
   
 MTDTresults = MTDT.algmClassifyR(MultiAssayExperiment, tierList, fixedTier = fixedTier, ssercutoffList = ssercutoffList, tierUnitCosts= tierUnitCosts,
                                  performanceType = performanceType, runtestorruntests = runtestorruntests , classes=classes , crossValParams=crossValParams, 
-                                 modellingParams=modellingParams, characteristics=characteristics,  seed=seed, verbose=verbose)
+                                 modellingParams=modellingParams, characteristics=characteristics,minTierSize = minTierSize,  seed=seed, verbose=verbose)
 
 return(MTDTresults)
 

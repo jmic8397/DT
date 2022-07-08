@@ -10,7 +10,7 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
                                  ssercutoffList,tierUnitCosts = c(100, 500, 1000), 
                                  performanceType = "Sample Error", runtestorruntests = "runtest",
                                  classes = NULL, crossValParams = NULL, modellingParams = NULL, 
-                                 characteristics = NULL, 
+                                 characteristics = NULL, minTierSize = 10, 
                                  seed=1, verbose=F){
   
   
@@ -125,7 +125,7 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
           seed=seed, verbose, runtestorruntests=runtestorruntests,
           classes=classes, crossValParams=crossValParams, modellingParams=modellingParams, 
           characteristics=characteristics, performanceType=performanceType, finalTier=finalTier, 
-           classIndex, z)
+           classIndex, minTierSize = minTierSize, z)
 
         
         #retained is now current + new retained
@@ -142,10 +142,7 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
         print(paste0("Size Check"))
         print(paste0(total - retained))
         
-        # if(total - retained < 10){
-        #   
-        # }
-        # 
+
 
         
         print(paste0("    Total = ", total,  ""))
@@ -154,17 +151,6 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
                      toprogress, " to progress to next tier)"))
         print(paste0("    Not processed = ", notprocessed))
         
-        #not enough samples for another tier
-        #to set user defined threshold
-        # if(total - retained < 10 ){
-        #   print(paste0("Less than 10 to progress, Tree terminating early"))
-        #   for(remainingTier in ntier:dim(myperms)[2]){
-        #     print(remainingTier)
-        #   MTunits[[remainingTier]]$id$id.retained = c(MTunits[[remainingTier]]$id$id.retained,MTunits[[remainingTier]]$id$id.toprogress,MTunits[[remainingTier]]$id$id.notprocessed)
-        #   MTunits[[remainingTier]]$id$id.toprogress = tibble(SampleID=NULL)
-        #   }
-        #   break
-        # }
 
         
       }
@@ -233,7 +219,7 @@ MTDT.algmCost <- function(dataList, rsmpList, tierList,
     MTunits[[ntier]] = MTblockClassifyR( data=data, id.retained=id.include,
       ssercutoff=ssercutoff, tier=tier, plotlabel=tier, runtestorruntests, classes = classes,
       crossValParams = crossValParams, modellingParams = modellingParams, characteristics = characteristics,
-      performanceType = performanceType,seed=seed, verbose=verbose,finalTier,classIndex, z)
+      performanceType = performanceType,seed=seed, verbose=verbose,finalTier,classIndex, minTierSize=minTierSize, z)
 
     
         
@@ -345,10 +331,7 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
           dplyr::filter(SampleID %in% id.notretained)
       )
     }
-    
-    # print(TSER.retained)
-    # print(TSER.notretained)
-    
+
 
     tierlabel = paste(tierlabel, collapse = '-')
     
@@ -368,8 +351,7 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
         dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>% 
         dplyr::mutate(strata=factor("Not retained", levels=c("Retained", "Not retained")))
     )
-    print(TSER.overall[[nperm]])
-    
+
     tserplots[[nperm]] = tsercutoff_plot(TSER.overall[[nperm]]) + 
       ggtitle(paste0("Overall: ", tierlabel))
     
@@ -386,8 +368,7 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
     stra = NULL
 
     for (ntier in 1:ntiers){
-      print(ntier)
-      
+
       n.from=n.retained + 1
       n.end = n.retained +
         dim(MTlist[[nperm]][[ntier]]$TSERcutoff$Stratification)[1]
@@ -402,8 +383,7 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
         dplyr::mutate(tier=tierList[[myperms[nperm, ntier]]]) %>% 
         tibble::tibble(., ID = n.from:n.end)
       
-      print(stra.MTunit)
-      
+
       n.retained = n.retained +
         MTlist[[nperm]][[ntier]]$TSERcutoff$Stratification %>% 
         dplyr::filter(strata=="Retained") %>% nrow()
@@ -630,7 +610,6 @@ MTDT.ClassifyR.cost.summary <- function(MTDTobject, tierUnitCosts){
         tier=factor(tier, levels=tierseq)) %>% 
       dplyr::arrange(tier)
     
-    print(c)
 
     Costs = dplyr::bind_rows(
       Costs,
@@ -638,8 +617,7 @@ MTDT.ClassifyR.cost.summary <- function(MTDTobject, tierUnitCosts){
              Cost.byTier = str_c(paste0("$", c$cost), collapse="-"),
              Cost.Total=sum(c$cost, na.rm=T))
     )
-    print(Costs)
-    
+
   }
 
   TSER.summary = MTDTsummary$TSER.summary %>% 
@@ -652,7 +630,6 @@ MTDT.ClassifyR.cost.summary <- function(MTDTobject, tierUnitCosts){
                   Prop.notretained, Threshold) %>% 
     dplyr::left_join(Costs, by="Tier.Sequence")
   
-  print(TSER.summary)
 
   return(list(TSER.summary = TSER.summary,
               MT.summary = MTperm.summary,
