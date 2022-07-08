@@ -101,7 +101,7 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
         
         
         #get the column index of the class from the MAE
-        classIndex = grep(classes,colnames(colData(melanomaAssaysNorm)))
+        classIndex = grep(classes,colnames(colData(MultiAssayExperiment)))
         
         #Subsetting NA's
         MAEwithoutRetained = MultiAssayExperiment

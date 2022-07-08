@@ -37,12 +37,18 @@ library(randomForest)
 
 tictoc::tic()
 
-dataDir = "./melanomaAssaysNorm.RData"
-WDir = "C:/Users/jamie/Desktop/UniY3S1/DataScience/DENR3901/Prereadings/NewMelanomaData"
+dataDirMelanoma = "./melanomaAssaysNorm.RData"
+dataDirCovid = "./COMBAT_COVID_MAE_20220703.RDATA"
+dataDirBioHeart = "./MultiAssayExperiment_PLM_20210519_ageCorrected"
+
+WDir = "C:/Users/jamie/Desktop/UniY3S1/DataScience/DENR3901/Prereadings/MTDT2021Version/NewDATA"
 WDirR = "C:/Users/jamie/Desktop/UniY3S1/DataScience/DENR3901/Prereadings/MTDT2021Version"
 
 setwd(WDir)
-load(dataDir)
+load(dataDirCovid)
+original_naming = c("COVID_HCW_MILD", "COVID_HCW_SEVERE", "COVID_HCW_CONV", "COVID_HCW_ASYMPTOMATIC", "HV", "Sepsis", "COVID_MILD", "COVID_SEV", "COVID_CRIT", "Flu")
+new_naming = c("Good", "Bad", NA, "Good", NA, NA, "Good", "Bad", "Bad", NA)
+COVID_MAE$outcome_bin <- factor(plyr::mapvalues(COVID_MAE$Source, original_naming, new_naming))
 setwd(WDirR)
 
 source("./MTDT-0-fxn-SSER.R")
@@ -50,14 +56,9 @@ source("./MTDT-0-fxn-GeneralMTDT.R")
 source("./MTDT-0-fxn-MTblock.R")
 source("./MTDT-0-fxn-others.R")
 source("./MTDT-0-fxn-MTDT.R")
-source("./MTDT-1-datachecking.R")
+# source("./MTDT-1-datachecking.R")
 
 
-# melanomaAssaysNorm
-# 
-# melanomaAssaysNorm[,,"iTRAQabsolute"]
-# 
-# subsetCompleteAssay2 = melanomaAssaysNorm[,complete.cases(melanomaAssaysNorm[,, "iTRAQabsolute" ]),]
 
 
 ```
@@ -84,7 +85,7 @@ At each node of the tree, a machine learning model is used to establish the samp
 ###############################################################################
 
 #Choose the MultiAssayExperiment Object for performing classification   
-MultiAssayExperiment = melanomaAssaysNorm
+MultiAssayExperiment = COVID_MAE
 
 
   
@@ -101,12 +102,12 @@ weights = c(0.5,-0.5)
 
 #List of tier names
 #For melanoma example: longRNA has too many features, we just want a single iTRAQ****
-tierList = c( "microRNA"  ,    "NanoString"   , "iTRAQabsolute") 
+tierList = c( "RNAseq"  ,    "Luminex"   , "CITEseq") 
 
 #Sample specific error cutoffs 
 #(E.g. x | if the sample specific error of cross validated prediction is > x, the sample will 'progress' to the next tier. Lower cutoff = higher retention generally)
 # ssercutoffList= list(c(0.4, 0.4, 0.4),c(0.6, 0.6, 0.6)) # -> For multi-threshold analysis
-ssercutoffLists= list(c(0.4, 0.4, 0.4))
+ssercutoffLists= list(c(0.2, 0.2, 0.2))
 
 #Tier costs (e.g. price of performing test for an individual), Clinical also last index
 tierUnitCosts = c(100, 500, 1000)
@@ -114,14 +115,14 @@ tierUnitCosts = c(100, 500, 1000)
 #Which tier to fix as first in Tree? (If any)
 # e.g. fixedTier = "Clinical"
 # fixedTier = "clinical"
-fixedTier = "microRNA"
+fixedTier = "RNAseq"
 
 #Choose whether CV needed?
 #runtest() or runtests()? 
 runtestorruntests = "runtests"
 
 #name of classifier/classes column in dataset
-classes = "class1vs4years"
+classes = "outcome_bin"
 
 #Performance type (e.g. Sample Error) 
 performanceType = "Sample Error"
@@ -203,7 +204,7 @@ source("./MTDT-0-fxn-GeneralMTDT.R")
 source("./MTDT-0-fxn-MTblock.R")
 source("./MTDT-0-fxn-others.R")
 source("./MTDT-0-fxn-MTDT.R")
-source("./MTDT-1-datachecking.R")
+# source("./MTDT-1-datachecking.R")
 
 #filter NA's for class
 classColumn = grep(classes, colnames(colData(MultiAssayExperiment)))
@@ -289,16 +290,15 @@ for(results in 1:length(MTDTsummaries)){
     df = ToDataFrameTree(treeRoot,"counter", "tierOrder")
     df = df %>% filter(grepl('^.*Retained',levelName))
     df = df %>% mutate(counterSum = cumsum(counter))
-    
-    
+
     #for each level of the permutation make a circle representing the relative proportion of the level (e.g. retained for each experiment)
     
     for(i in 1:length(df$levelName)){
-      print(nperm,i)
       
       MTDTsummary$TSER.summary$TSA.retained
+      print(df$counterSum[i]/df$counterSum[length(df$counterSum)])
       
-        g = g + geom_point(aes_(x=((MTDTsummary$TSER.summary$TSA.retained[nperm] * MTDTsummary$TSER.summary$N.retained[nperm] ) /MTDTsummary$TSER.summary$N.retained[nperm] ), y= MTDTsummary$TSER.summary$Cost.Total[nperm], size = df$counterSum[i]/df$counterSum[length(df$counterSum)], colour = df$counterSum[i] ),alpha = 0.05, show.legend=FALSE) 
+        g = g + geom_point(aes_(x=((MTDTsummary$TSER.summary$TSA.retained[nperm] * MTDTsummary$TSER.summary$N.retained[nperm] ) /MTDTsummary$TSER.summary$N.retained[nperm] ), y= MTDTsummary$TSER.summary$Cost.Total[nperm], size = (df$counterSum[i]/df$counterSum[length(df$counterSum)]), colour = df$tierOrder[i] ),alpha = 0.05, show.legend=FALSE) 
     }
   }
 
@@ -306,7 +306,7 @@ totalTierAccuracies = (MTDTsummary$TSER.summary$TSA.retained * MTDTsummary$TSER.
 
 #increasing range of axis to allow proper view of circles
 g = g+ geom_text(label = MTDTsummary$TSER.summary$Tier.Sequence, hjust=0, vjust=0)
- g = g +  scale_size(range = c(5,30)) + coord_cartesian(xlim= c(0.9*min(totalTierAccuracies),1.1*max(totalTierAccuracies)), ylim=c(0.9*min(MTDTsummary$TSER.summary$Cost.Total),1.1*max(MTDTsummary$TSER.summary$Cost.Total)))
+ g = g + scale_size_continuous(range=c(10,30)) +  coord_cartesian(xlim= c(0.9*min(totalTierAccuracies),1.1*max(totalTierAccuracies)), ylim=c(0.9*min(MTDTsummary$TSER.summary$Cost.Total),1.1*max(MTDTsummary$TSER.summary$Cost.Total)))
 print(g)
 
 }
