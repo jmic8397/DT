@@ -9,9 +9,6 @@ sser_classifyR <- function( MAEobject=NULL,
                            modellingParams =NULL, characteristics = characteristics, seed=1, 
                            performanceType = "Sample Error", 
                            verbose=verbose,classIndex, minTierSize = 10, z){
-  
-  
-
 
 
   library(sparsediscrim)
@@ -25,7 +22,12 @@ sser_classifyR <- function( MAEobject=NULL,
 
   #remove Na's for classifyR
   #this has already been done - does nothing unless samples with missing data exist
+  if(tier != "sampleInfo"){
   MAECompleteCases = MAEobject[,complete.cases(MAEobject[,,tier]),tier]
+  }
+  else{
+    MAECompleteCases= MAEobject
+  }
   
   #errorTable
   errorTable = tibble(SampleID=character(),sser=double())
@@ -41,18 +43,14 @@ sser_classifyR <- function( MAEobject=NULL,
 
   }else{
 
-    
     DMresults <- runTests(MAECompleteCases, target=tier, outcomesColumns=classes, 
                           crossValParams = crossValParams, modellingParams = modellingParams[[z]], 
-                          characteristics = characteristics, verbose =1)
+                          characteristics = characteristics, verbose =verbose)
     
-  
-  
-  
+
     # This gives estimate error rate
     performance = calcCVperformance(DMresults, performanceType)
     error = performance(performance)
-   
     
     #find NA's
     SampleIDComplete = names(error$`Sample Error`)
@@ -83,13 +81,11 @@ sser_classifyR <- function( MAEobject=NULL,
 
 #tier specific error
 tser <- function(SSER=NULL, col_name=NULL){
+  
   library(tidyverse)
   library(rms)
   
-  
-  
   SSER=SSER$SSER
-
   
   if(length(rownames(SSER))!=0){
   
@@ -100,14 +96,12 @@ tser <- function(SSER=NULL, col_name=NULL){
     as_vector() %>% 
     sort()
   
-
   names(cutoffs) <- NULL
   
   err = dplyr::tibble(tser=NULL, cutoff=NULL)
   n = vector()
   cindices = vector()
   briers = vector()
-  
 
   }
   
@@ -129,9 +123,6 @@ tser <- function(SSER=NULL, col_name=NULL){
       #cutoff = threshold?
       dplyr::mutate(cutoff=threshold)
 
-    
-
-    
     #n retained = rows left in sser <= threshold error
     n = c(n, dim(df.sser)[1])
     err = dplyr::bind_rows(err, tser)
@@ -139,15 +130,14 @@ tser <- function(SSER=NULL, col_name=NULL){
   }
 
   
-  
   if(length(rownames(SSER))!=0){
     if(length(dim(SSER)[1])-length(n) >= 10){
+      
       TSER = tibble(
         Index = rep(as_label(enquo(col_name)), length(cutoffs)),
         cutoff = cutoffs,
         tse = err %>%
           dplyr::group_by(cutoff) %>% 
-          #tser = average tser
           dplyr::summarise(tser=mean(tser, na.rm=T)) %$% 
           tser,
         n_total = dim(SSER)[1],
@@ -162,7 +152,6 @@ tser <- function(SSER=NULL, col_name=NULL){
           cutoff = cutoffs,
           tse = err %>%
             dplyr::group_by(cutoff) %>% 
-            #tser = average tser
             dplyr::summarise(tser=mean(tser, na.rm=T)) %$% 
             tser,
           n_total = dim(SSER)[1],
@@ -173,6 +162,7 @@ tser <- function(SSER=NULL, col_name=NULL){
         )
       }
   }
+  
 if(length(rownames(SSER))==0){
     TSER = tibble(
       Index = as_label(enquo(col_name)),
@@ -197,6 +187,7 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier, minTi
   Removed = as.data.frame(SSER$removed)
   SSER=SSER$SSER
   
+  #If this tier was processed
   if(length(SSER)>0){
   
   id.retained = SSER %>% 
@@ -204,11 +195,7 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier, minTi
     dplyr::select(SampleID) %>%
     as_vector() %>% unique()
   
-  #if finalTier of tree, add all samples to retained
-  #If less than min to progress, add all samples to retained
-  if(mycutoff==1 || ( (dim(SSER)[1]-length(id.retained)) < minTierSize) ){
-    id.retained = SSER %>% select(SampleID) %>% as_vector() %>% unique()
-  }
+
 
   
   id.toprogress = setdiff(
@@ -218,6 +205,13 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier, minTi
   n=dim(SSER)[1]
   n_retained=length(id.retained)
   n_progress=n-n_retained
+  
+  #if finalTier of tree, add all samples to retained
+  #If less than min to progress, add all samples to retained
+  if(finalTier == TRUE || ( (dim(SSER)[1]-length(id.retained)) < minTierSize) ){
+    id.retained = SSER %>% select(SampleID) %>% as_vector() %>% unique()
+    id.toprogress = NULL
+  }
   
 
   
@@ -239,25 +233,16 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier, minTi
     dplyr::mutate(strata="To progress",
                   n=n_progress)
   
+  #Tier not processed, creating empty results object
   }else{
-    
     id.retained = NULL
-    
     id.toprogress = NULL
-    
     n=0
     n_retained=0
     n_progress=0
-    
-    
-    
     TSER_overall =  tibble(strata="Overall", mean = 0, n=0)
-    
     TSER_retained = tibble(strata="Retained",mean = 0,n=0)
-    
     TSER_progress = tibble(strata="To progress",mean = 0,n=0)
-
-    
   }
   
   TSER_cutoff = bind_rows(TSER_overall, TSER_retained, TSER_progress) %>% 
@@ -266,6 +251,7 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier, minTi
     )
   
   
+  #If tier was processed
   if(length(SSER)>0){
   
   strata = dplyr::bind_rows(
@@ -287,19 +273,15 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier, minTi
     dplyr::group_by(strata) %>% 
     dplyr::summarise(mean(tser, na.rm=T), n=mean(n))
   
+  #Else empty results object
   }else{
     
     strata = tibble(SampleID=character(),sser=double(),strata=factor(),Removed=character())
-
-    
     TSER_table = TSER_cutoff %>% 
       dplyr::group_by(strata) %>% 
       dplyr::summarise(0, n=0)
     
   }
-
-  
-
   
   return(list(TSER_cutoff=TSER_cutoff,
               Stratification=strata,
@@ -351,11 +333,10 @@ tsercutoff_plot <- function(TSERcutoff){
   return(p)
 }
 
+
 strat_plot <- function(TSER_cutoff=NULL, tier=""){
-  
 
   stra = TSER_cutoff$Stratification
-  # print(stra)
   IDnm=colnames(stra)[1]
   ID_nm=IDnm
   ID=stra[, 1]

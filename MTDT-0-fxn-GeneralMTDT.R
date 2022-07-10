@@ -2,8 +2,8 @@
 GeneralMTDT <- function(MultiAssayExperiment,
                       tierList,fixedTier = NULL,
                       ssercutoffList,tierUnitCosts = c(100, 500, 1000), 
-                      performanceType = "Sample Error", runtestorruntests = "runtest",
-                      classes = NULL, crossValParams = NULL, modellingParams = NULL, characteristics = NULL,
+                      performanceType = "Sample Error", classes = NULL, crossValParams = NULL, 
+                      modellingParams = NULL, characteristics = NULL,
                       minTierSize = 10, seed=1, verbose=F){
 
   
@@ -14,7 +14,7 @@ GeneralMTDT <- function(MultiAssayExperiment,
 #fixedtier is whether to fix the first tier of permutations
   
 MTDTresults = MTDT.algmClassifyR(MultiAssayExperiment, tierList, fixedTier = fixedTier, ssercutoffList = ssercutoffList, tierUnitCosts= tierUnitCosts,
-                                 performanceType = performanceType, runtestorruntests = runtestorruntests , classes=classes , crossValParams=crossValParams, 
+                                 performanceType = performanceType, classes=classes , crossValParams=crossValParams, 
                                  modellingParams=modellingParams, characteristics=characteristics,minTierSize = minTierSize,  seed=seed, verbose=verbose)
 
 return(MTDTresults)

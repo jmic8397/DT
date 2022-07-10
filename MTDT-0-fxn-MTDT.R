@@ -8,12 +8,10 @@
 MTDT.algmClassifyR <-   function(MultiAssayExperiment,
                                  tierList,fixedTier = NULL,
                                  ssercutoffList,tierUnitCosts = c(100, 500, 1000), 
-                                 performanceType = "Sample Error", runtestorruntests = "runtest",
+                                 performanceType = "Sample Error",
                                  classes = NULL, crossValParams = NULL, modellingParams = NULL, 
                                  characteristics = NULL, minTierSize = 10, 
                                  seed=1, verbose=F){
-  
-  
   
   
 
@@ -44,124 +42,115 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
   
   
   MTlist = list()
-  
-  
-  #errorchecking for inputs here
-  
 
-  #RuntestS
-
-  #OK,  runtests was selected
-  #also need alternative function for runtest() (no cv) and runtesteasyhard() ***********************************
-  if(runtestorruntests=="runtests"){
+  #for each permutation (row)
+  for (nperm in 1:dim(myperms)[1]) {
     
-    #for each permutation (row)
-    for (nperm in 1:dim(myperms)[1]) {
-      
-      #create a new list for results
-      MTunits = list()
+    #create a new list for results
+    MTunits = list()
+  
+    #create list for # retained for this permutation
+    id.retained = list()
     
-      #create list for # retained for this permutation
-      id.retained = list()
+    #create sequence for current tier
+    tierseq = NULL
+    
+    #for each tier of each permutation
+    for (ntier in 1:dim(myperms)[2]){
+      #set tierseq and tier as per myperms #
+      tierseq = c(tierseq, tierList[[myperms[nperm, ntier]]])
+    }
+    
+    #create tier-sequence string
+    tierseq = paste0(tierseq, collapse="-")
+    
+    #for each tier of each perm
+    for (ntier in 1:dim(myperms)[2]){
       
-      #create sequence for current tier
-      tierseq = NULL
-      
-      #for each tier of each permutation
-      for (ntier in 1:dim(myperms)[2]){
-        #set tierseq and tier as per myperms #
-        tierseq = c(tierseq, tierList[[myperms[nperm, ntier]]])
+      #Final tier check
+      # this will later enforce that all samples are allocated to a leaf node regardless of error
+      finalTier = FALSE
+      if(ntier == dim(myperms)[2] || (length(rownames(colData(MultiAssayExperiment))) - length(id.retained)) < minTierSize)
+      {
+        finalTier = TRUE
       }
       
-      #create tier-sequence string
-      tierseq = paste0(tierseq, collapse="-")
+      #z = which layer of the MAE as per permutations (e.g. 1=clinical, 2=histo, perm 1-2 = clin-histo)
+      z = myperms[nperm, ntier]
       
-      #for each tier of each perm
-      for (ntier in 1:dim(myperms)[2]){
-        
-        #Final tier check
-        # this will later enforce that all samples are allocated to a leaf node regardless of error
-        finalTier = FALSE
-        if(ntier == dim(myperms)[2]){
-          finalTier = TRUE
-        }
-        
-        #z = which layer of the MAE as per permutations (e.g. 1=clinical, 2=histo, perm 1-2 = clin-histo)
-        z = myperms[nperm, ntier]
-        
 
-        
-        #Can probably use names(experiments(measurements)) + clinical for tiers
-        tier = tierList[[z]]
-        ssercutoff = ssercutoffList[[z]]
-        
-        if(finalTier){
-          ssercutoff = 1
-        }
-        
-        
-        #get the column index of the class from the MAE
-        classIndex = grep(classes,colnames(colData(MultiAssayExperiment)))
-        
-        #Subsetting NA's
-        MAEwithoutRetained = MultiAssayExperiment
-        retainList = unlist(id.retained)
-        retainListLogical = !(rownames(colData(MAEwithoutRetained)) %in% retainList )
-        
-        if(length(id.retained)>0){
-            MAEwithoutRetained = MAEwithoutRetained[,retainListLogical ,]
-        }
-        
-        #Create tierstring
-        #e.g. (1) Clin-Histo-Nano: <Clin>
-        print(paste0("(", nperm, ") ", tierseq, ": <", tier, ">"))
-        # print(paste0("nperms = ", nperm, " ; ntiers = ", ntier, " ; tier = ", tier)) #############<-------------------------
-        
-        
-        #pass model and data to MTblock which returns retained status of current sequence layer
-        MTunits[[ntier]] = MTblockClassifyR(
-          data=MAEwithoutRetained, id.retained=id.retained,
-          ssercutoff=ssercutoff, tier=tier, plotlabel=tier,
-          seed=seed, verbose, runtestorruntests=runtestorruntests,
-          classes=classes, crossValParams=crossValParams, modellingParams=modellingParams, 
-          characteristics=characteristics, performanceType=performanceType, finalTier=finalTier, 
-           classIndex, minTierSize = minTierSize, z)
-
-        
-        #retained is now current + new retained
-        id.retained = c(id.retained, MTunits[[ntier]]$id$id.retained)
-
-        retained = MTunits[[ntier]]$id$id.retained %>% unique() %>% length()
-        toprogress = MTunits[[ntier]]$id$id.toprogress %>% unique() %>% length()
-        notprocessed = MTunits[[ntier]]$id$id.notprocessed %>% unique() %>% length()
-        total = retained+toprogress+notprocessed
-        processed=retained+toprogress
-        
-        
-        #not enough samples - terminate early
-        print(paste0("Size Check"))
-        print(paste0(total - retained))
-        
-
-
-        
-        print(paste0("    Total = ", total,  ""))
-        print(paste0("    Processed =", processed, 
-                     " (", retained, " retained, ",
-                     toprogress, " to progress to next tier)"))
-        print(paste0("    Not processed = ", notprocessed))
-        
-
-        
+      
+      #Can probably use names(experiments(measurements)) + clinical for tiers
+      tier = tierList[[z]]
+      ssercutoff = ssercutoffList[[z]]
+      
+      if(finalTier){
+        ssercutoff = 1
       }
       
-      MTlist[[nperm]] = MTunits
+      
+      #get the column index of the class from the MAE
+      classIndex = grep(classes,colnames(colData(MultiAssayExperiment)))
+      
+      #Subsetting NA's
+      MAEwithoutRetained = MultiAssayExperiment
+      retainList = unlist(id.retained)
+      retainListLogical = !(rownames(colData(MAEwithoutRetained)) %in% retainList )
+      
+      if(length(id.retained)>0){
+          MAEwithoutRetained = MAEwithoutRetained[,retainListLogical ,]
+      }
+      
+      #Create tierstring
+      #e.g. (1) Clin-Histo-Nano: <Clin>
+      print(paste0("(", nperm, ") ", tierseq, ": <", tier, ">"))
+      # print(paste0("nperms = ", nperm, " ; ntiers = ", ntier, " ; tier = ", tier)) #############<-------------------------
+      
+      
+      #pass model and data to MTblock which returns retained status of current sequence layer
+      MTunits[[ntier]] = MTblockClassifyR(
+        data=MAEwithoutRetained, id.retained=id.retained,
+        ssercutoff=ssercutoff, tier=tier, plotlabel=tier,
+        seed=seed, verbose, 
+        classes=classes, crossValParams=crossValParams, modellingParams=modellingParams, 
+        characteristics=characteristics, performanceType=performanceType, finalTier=finalTier, 
+         classIndex, minTierSize = minTierSize, z)
+
+      
+      #retained is now current + new retained
+      id.retained = c(id.retained, MTunits[[ntier]]$id$id.retained)
+
+      retained = MTunits[[ntier]]$id$id.retained %>% unique() %>% length()
+      toprogress = MTunits[[ntier]]$id$id.toprogress %>% unique() %>% length()
+      notprocessed = MTunits[[ntier]]$id$id.notprocessed %>% unique() %>% length()
+      total = retained+toprogress+notprocessed
+      processed=retained+toprogress
+      
+      
+      #not enough samples - terminate early
+      print(paste0("Size Check"))
+      print(paste0(total - retained))
+      
+
+
+      
+      print(paste0("    Total = ", total,  ""))
+      print(paste0("    Processed =", processed, 
+                   " (", retained, " retained, ",
+                   toprogress, " to progress to next tier)"))
+      print(paste0("    Not processed = ", notprocessed))
+      
+
       
     }
     
-    return(MTDTobject = list(MTlist=MTlist, myperms=myperms, dataList=MultiAssayExperiment,
-                             tierList=tierList, ssercutoffList=ssercutoffList))
+    MTlist[[nperm]] = MTunits
+    
   }
+  
+  return(MTDTobject = list(MTlist=MTlist, myperms=myperms, dataList=MultiAssayExperiment,
+                           tierList=tierList, ssercutoffList=ssercutoffList))
+  
 }
 
 
@@ -220,12 +209,8 @@ MTDT.algmCost <- function(dataList, rsmpList, tierList,
       ssercutoff=ssercutoff, tier=tier, plotlabel=tier, runtestorruntests, classes = classes,
       crossValParams = crossValParams, modellingParams = modellingParams, characteristics = characteristics,
       performanceType = performanceType,seed=seed, verbose=verbose,finalTier,classIndex, minTierSize=minTierSize, z)
-
-    
         
     id.retained = c(id.retained, MTunits[[ntier]]$id$id.retained)
-    
-
     
     retained = MTunits[[ntier]]$id$id.retained %>% unique() %>% length()
     toprogress = MTunits[[ntier]]$id$id.toprogress %>% unique() %>% length()
@@ -497,9 +482,9 @@ MTDT.ClassifyR.summary <- function(MTDTobject){
   
   TSER.summary <- tibble::tibble(
     Tier.Sequence = tiersequence,
-    TSA.retained = (1-TSERoverall.retained),
+    TSA.retained = (TSERoverall.retained),
     N.retained = N.retained,
-    TSA.notretained = (1-TSERoverall.notretained),
+    TSA.notretained = (TSERoverall.notretained),
     N.notretained = N.notretained,
     Threshold = MTDTobject$ssercutoffList[1]
   )
@@ -525,7 +510,6 @@ MTperm.summary <- function(MTDTobject){
   ssercutoffList = MTDTobject$ssercutoffList
   tierUnitCosts = tierUnitCosts
 
-  
   nperms = dim(myperms)[1]
   ntiers = dim(myperms)[2]
   N.in = NULL

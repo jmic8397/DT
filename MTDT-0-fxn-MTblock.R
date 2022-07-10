@@ -9,7 +9,7 @@
 #this is actually taking a model list not a single model
 MTblockClassifyR <- function(data=NULL, id.retained=NULL,  
                      ssercutoff=0.2, tier = NULL, plotlabel = "",
-                    runtestorruntests,classes = NULL, crossValParams = NULL, modellingParams = NULL, characteristics = NULL,
+                    classes = NULL, crossValParams = NULL, modellingParams = NULL, characteristics = NULL,
                     performanceType = "Sample Error", seed=1, verbose=F, finalTier,  classIndex, minTierSize = 10, z){
   
   errormessages = NULL
@@ -47,6 +47,7 @@ MTblockClassifyR <- function(data=NULL, id.retained=NULL,
     dplyr::filter(strata=="Not processed") %>% 
     as_vector()
   id.notprocessed = c(id.notprocessed)
+  
   names(id.retained) <- NULL
   names(id.toprogress) <- NULL
   names(id.notprocessed) <- NULL
@@ -54,6 +55,11 @@ MTblockClassifyR <- function(data=NULL, id.retained=NULL,
   #Update to user defined threshold
   if(length(id.toprogress) < minTierSize){
     print("Not enough samples to progress, classifying at current layer!")
+    id.retained = c(id.retained,id.toprogress)
+    id.toprogress = NULL
+  }
+  
+  if(finalTier == TRUE){
     id.retained = c(id.retained,id.toprogress)
     id.toprogress = NULL
   }

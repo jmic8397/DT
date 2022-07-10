@@ -50,12 +50,16 @@ load(dataDirBioHeart)
 #bioheart
 bioheart_mae <- mergeReplicates(intersectColumns(bioheart_mae))
 bioheart_mae$CAD <- factor(bioheart_mae$Gensini > 0)
+bioheart_clinical_features <- c("Age", "Gender", "HTN", "T2DM", "Signif_Smok", "Hchol", "SMuRFs")
+outcome_feature <- "CAD"
+keep_features <- colnames(colData(bioheart_mae)) %in% c(bioheart_clinical_features, outcome_feature)
+colData(bioheart_mae) <- na.omit(colData(bioheart_mae)[,keep_features])
+bioheart_mae$SMuRFs <- as.numeric(bioheart_mae$SMuRFs)
 
 #Covid data
 # original_naming = c("COVID_HCW_MILD", "COVID_HCW_SEVERE", "COVID_HCW_CONV", "COVID_HCW_ASYMPTOMATIC", "HV", "Sepsis", "COVID_MILD", "COVID_SEV", "COVID_CRIT", "Flu")
 # new_naming = c("Good", "Bad", NA, "Good", NA, NA, "Good", "Bad", "Bad", NA)
 # COVID_MAE$outcome_bin <- factor(plyr::mapvalues(COVID_MAE$Source, original_naming, new_naming))
-
 
 
 setwd(WDirR)
@@ -110,27 +114,24 @@ weights = c(0.5,-0.5)
 
 #List of tier names
 #For melanoma example: longRNA has too many features, we just want a single iTRAQ****
-tierList = c( "Metabolomics"  ,    "Proteomics"   , "Lipidomics_totals" ) 
+tierList = c( "Metabolomics"  ,    "Proteomics"   , "Lipidomics_totals", "sampleInfo" ) 
 
 #Sample specific error cutoffs 
 #(E.g. x | if the sample specific error of cross validated prediction is > x, the sample will 'progress' to the next tier. Lower cutoff = higher retention generally)
 # ssercutoffList= list(c(0.4, 0.4, 0.4),c(0.6, 0.6, 0.6)) # -> For multi-threshold analysis
-ssercutoffLists= list(c(0.4, 0.4, 0.4))
+ssercutoffLists= list(c(0.4, 0.4, 0.4,0.4))
 
 #Tier costs (e.g. price of performing test for an individual), Clinical also last index
-tierUnitCosts = c(100, 500, 1000)
+tierUnitCosts = c(100, 500, 1000,50)
 
 #Which tier to fix as first in Tree? (If any)
 # e.g. fixedTier = "Clinical"
 # fixedTier = "clinical"
-fixedTier = "Lipidomics_totals"
+fixedTier = "sampleInfo"
 
 #Minimum size of Tier 
 minTierSize = 50
 
-#Choose whether CV needed?
-#runtest() or runtests()? 
-runtestorruntests = "runtests"
 
 #name of classifier/classes column in dataset
 classes = "CAD"
@@ -142,7 +143,7 @@ performanceType = "Sample Error"
 ##Cross validation parameters (could create a list for each experiment)
 crossValParams = CrossValParams(
     samplesSplits = "Permute k-Fold",
-    permutations = 10,
+    permutations = 5,
     percentTest = 25,
     folds = 5,
     leave = 1,
@@ -154,19 +155,19 @@ crossValParams = CrossValParams(
 
 ##Data transformation parameters
 # transformParams = TransformParams(transform, characteristics = DataFrame(), intermediate = character(0), ...)
-transformParamsList = c(NULL,NULL,NULL)
+transformParamsList = c(NULL,NULL,NULL,NULL)
 
 
 
 ##Feature selection parameters
 # selectParams = SelectParams(featureSelection, characteristics = DataFrame(), minPresence = 1, intermediate = character(0), subsetToSelections = TRUE, tuneParams = list(nFeatures = seq(10, 100, 10), performanceType = "Balanced Error"), ...)
-selectParamsList = c(SelectParams(),SelectParams(),SelectParams() )
+selectParamsList = c(SelectParams(),SelectParams(),SelectParams(),SelectParams() )
 
 
 ##Training Parameters -> Insert classifier here
 # To do: make this easier for the user by creating a funciton which will return the selectParamsList based on a simple classifier name, e.g. "SVM" will return SelectParams(SVMtrainInterface, kernel = "linear")?
 #TrainParams = TrainParams(classifier, characteristics = DataFrame(), intermediate = character(0), getFeatures = NULL, ...)
-trainParamsList = c(TrainParams(SVMtrainInterface, kernel = "linear", tuneParams = list(cost = c(0.01, 0.1, 1, 10))),TrainParams(randomForestTrainInterface),TrainParams())
+trainParamsList = c(TrainParams(SVMtrainInterface, kernel = "linear", tuneParams = list(cost = c(0.01, 0.1, 1, 10))),TrainParams(randomForestTrainInterface),TrainParams(),TrainParams())
 
 ##Prediction Parameters -> Insert classifier here
 # PredictParams(predictor, characteristics = DataFrame(), intermediate = character(0), ...)
@@ -187,8 +188,6 @@ for(model in 1:length(tierList)){
   
   modellingParams = c(modellingParams,currModellingParams)
 }
-
-
 
 
 #describing the characteristics of the classification used
@@ -223,7 +222,7 @@ retainList = !is.na(colData(MultiAssayExperiment)[classColumn])
 MultiAssayExperiment = MultiAssayExperiment[,retainList & !is.na(retainList),]
 
 #Subset specified experiments from tierList 
-MultiAssayExperiment = MultiAssayExperiment[,,tierList[tierList != "clinical"]]
+MultiAssayExperiment = MultiAssayExperiment[,,tierList[tierList != "sampleInfo"]]
 
 #Subset complete cases only for all assays
 #If this is removed, 'not-processed' samples will exist at some tiers for NA's
@@ -237,7 +236,7 @@ for(cutoff in 1:length(ssercutoffLists)){
   MTDTresults = GeneralMTDT(MultiAssayExperiment,
                         tierList,fixedTier,ssercutoffLists[[cutoff]],
                         tierUnitCosts = tierUnitCosts , performanceType = performanceType,
-                       runtestorruntests = runtestorruntests ,classes, crossValParams = crossValParams, modellingParams = modellingParams, characteristics = characteristics, minTierSize = minTierSize, seed, verbose)
+                       classes, crossValParams = crossValParams, modellingParams = modellingParams, characteristics = characteristics, minTierSize = minTierSize, seed, verbose)
   
   MTDTresultsList = append(MTDTresultsList, list(MTDTresults))
   
@@ -253,17 +252,7 @@ for(cutoff in 1:length(ssercutoffLists)){
 
 ## Plots
 
-Updates
-
-* Accuracy instead of Error
-* Changes axis on bubble plot (from y = retention to y = cost)
-* Concentric bubbles to represent tier retention proportions
-* Table -> remove proportion retained but keep total accuracy?
-
-New plots
-
-* Tree plot with numbers of samples progressed represented on edge lines
-
+Accuracy / Cost Plot
 
 
 ```{r   , echo=FALSE}
@@ -309,7 +298,7 @@ for(results in 1:length(MTDTsummaries)){
       MTDTsummary$TSER.summary$TSA.retained
       print(df$counterSum[i]/df$counterSum[length(df$counterSum)])
       
-        g = g + geom_point(aes_(x=((MTDTsummary$TSER.summary$TSA.retained[nperm] * MTDTsummary$TSER.summary$N.retained[nperm] ) /MTDTsummary$TSER.summary$N.retained[nperm] ), y= MTDTsummary$TSER.summary$Cost.Total[nperm], size = (df$counterSum[i]/df$counterSum[length(df$counterSum)]), colour = df$tierOrder[i] ),alpha = 0.05, show.legend=FALSE) 
+      g = g + geom_point(aes_(x=((MTDTsummary$TSER.summary$TSA.retained[nperm] * MTDTsummary$TSER.summary$N.retained[nperm])/MTDTsummary$TSER.summary$N.retained[nperm]), y= MTDTsummary$TSER.summary$Cost.Total[nperm], size = (df$counterSum[i]/df$counterSum[length(df$counterSum)]), colour = df$tierOrder[i] ),alpha = 0.05, show.legend=FALSE) 
     }
   }
 
@@ -324,6 +313,7 @@ print(g)
 
 ```
 
+Table
 
 ```{r, echo=FALSE}
 
@@ -376,6 +366,8 @@ DT::datatable(option=list( columnDefs=list(list(className="dt-center", targets=l
 print(tab)
 tab
 ```
+
+Tree Plots & Strata Plots
 
 ```{r results='asis'  , echo=FALSE}
 
