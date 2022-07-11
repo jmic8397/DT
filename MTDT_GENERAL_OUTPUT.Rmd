@@ -114,15 +114,15 @@ weights = c(0.5,-0.5)
 
 #List of tier names
 #For melanoma example: longRNA has too many features, we just want a single iTRAQ****
-tierList = c( "Metabolomics"  ,    "Proteomics"   , "Lipidomics_totals", "sampleInfo" ) 
+tierList = c( "Metabolomics"  ,    "Proteomics"  , "sampleInfo" ) 
 
 #Sample specific error cutoffs 
 #(E.g. x | if the sample specific error of cross validated prediction is > x, the sample will 'progress' to the next tier. Lower cutoff = higher retention generally)
 # ssercutoffList= list(c(0.4, 0.4, 0.4),c(0.6, 0.6, 0.6)) # -> For multi-threshold analysis
-ssercutoffLists= list(c(0.4, 0.4, 0.4,0.4))
+ssercutoffLists= list(c(0.4, 0.4, 0.4))
 
 #Tier costs (e.g. price of performing test for an individual), Clinical also last index
-tierUnitCosts = c(100, 500, 1000,50)
+tierUnitCosts = c(100, 500, 1000)
 
 #Which tier to fix as first in Tree? (If any)
 # e.g. fixedTier = "Clinical"
@@ -196,7 +196,7 @@ for(model in 1:length(tierList)){
 characteristics = NULL
 
 seed=1
-verbose=3
+verbose=1
   
 ###############################################################################
 
@@ -390,6 +390,8 @@ for(results in 1:length(MTDTsummaries)){
     p1 = MTDTsummary$Plots.strat.prop[[nperm]] +
         theme(plot.title=element_text(face="bold"))
     #Tier specific error box plots
+      #Need to modify this to change for number of tiers 
+
     p2 = MTDTsummary$Plots.TSERcutoff[[nperm]][[1]]
     p3 = MTDTsummary$Plots.TSERcutoff[[nperm]][[2]] + ylab("")
     p4 = MTDTsummary$Plots.TSERcutoff[[nperm]][[3]] + ylab("")

@@ -87,7 +87,8 @@ tser <- function(SSER=NULL, col_name=NULL){
   
   SSER=SSER$SSER
   
-  if(length(rownames(SSER))!=0){
+  #Check non-empty tier
+  if(length(dim(SSER)[1])!=0){
   
   #cutoffs are the average error rates for samples
   cutoffs = SSER %>% 
@@ -96,8 +97,8 @@ tser <- function(SSER=NULL, col_name=NULL){
     as_vector() %>% 
     sort()
   
+  #Initialize data structures
   names(cutoffs) <- NULL
-  
   err = dplyr::tibble(tser=NULL, cutoff=NULL)
   n = vector()
   cindices = vector()
@@ -105,48 +106,40 @@ tser <- function(SSER=NULL, col_name=NULL){
 
   }
   
-  if(length(rownames(SSER))!=0 ){
-  
-  #for each cutoff 
-  for (i in 1:length(cutoffs)){
+  #Check non-empty rows
+  if(dim(SSER)[1]!=0 ){
     
-    #threshold = tser (1-avg(sser))
-    threshold = cutoffs[i]
-    
-    #filter for less than threshold?
-    df.sser = SSER %>% dplyr::filter({{col_name}}<=threshold)
-
-    #all below threshold
-    tser = df.sser %>%
-      #create new df for each repetition number containing mean accuracy
-      dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>%
-      #cutoff = threshold?
-      dplyr::mutate(cutoff=threshold)
-
-    #n retained = rows left in sser <= threshold error
-    n = c(n, dim(df.sser)[1])
-    err = dplyr::bind_rows(err, tser)
-  }
-  }
-
-  
-  if(length(rownames(SSER))!=0){
-    if(length(dim(SSER)[1])-length(n) >= 10){
+    #for each cutoff 
+    for (i in 1:length(cutoffs)){
       
-      TSER = tibble(
-        Index = rep(as_label(enquo(col_name)), length(cutoffs)),
-        cutoff = cutoffs,
-        tse = err %>%
-          dplyr::group_by(cutoff) %>% 
-          dplyr::summarise(tser=mean(tser, na.rm=T)) %$% 
-          tser,
-        n_total = dim(SSER)[1],
-        n_retained = n,
-        prop_retained = n_retained/n_total,
-        n_progress = n_total-n_retained,
-        prop_progress = n_progress/n_total,
-        )
-      }else{
+      #threshold = tser (1-avg(sser))
+      threshold = cutoffs[i]
+      
+      #filter for less than threshold
+      df.sser = SSER %>% dplyr::filter({{col_name}}<=threshold)
+  
+      #all below threshold
+      tser = df.sser %>%
+        #create new mean error for each threshold
+        dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>%
+        
+        dplyr::mutate(cutoff=threshold)
+  
+      #n retained = rows left in sser <= threshold error *************** *&*
+      if(dim(SSER)[1] - dim(df.sser)[1] > minTierSize){
+      n = c(n, dim(df.sser)[1])
+      err = dplyr::bind_rows(err, tser)
+      }
+      else{
+        n = c(n, 0)
+        err = dplyr::bind_rows(err, tser)
+      }
+    }
+    }
+  
+    #Check nonempty rows
+    if(dim(SSER)[1]!=0){
+        
         TSER = tibble(
           Index = rep(as_label(enquo(col_name)), length(cutoffs)),
           cutoff = cutoffs,
@@ -155,26 +148,28 @@ tser <- function(SSER=NULL, col_name=NULL){
             dplyr::summarise(tser=mean(tser, na.rm=T)) %$% 
             tser,
           n_total = dim(SSER)[1],
-          n_retained = n_total,
-          prop_retained = 1,
-          n_progress = n_total-n_total,
-          prop_progress = 0,
-        )
-      }
-  }
-  
-if(length(rownames(SSER))==0){
-    TSER = tibble(
-      Index = as_label(enquo(col_name)),
-      cutoff = 1,
-      tse = 1,
-      n_total = 0,
-      n_retained = 0,
-      prop_retained = 0,
-      n_progress = 0,
-      prop_progress = 0)
-  }
-  
+          n_retained = n,
+          prop_retained = n_retained/n_total,
+          n_progress = n_total-n_retained,
+          prop_progress = n_progress/n_total,
+          )
+        
+        }
+    
+    
+  #Check zero rows
+  if(dim(SSER)[1]==0){
+      TSER = tibble(
+        Index = as_label(enquo(col_name)),
+        cutoff = 1,
+        tse = 1,
+        n_total = 0,
+        n_retained = 0,
+        prop_retained = 0,
+        n_progress = 0,
+        prop_progress = 0)
+    }
+    
 
   return(TSER)
   }
@@ -188,51 +183,60 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier, minTi
   SSER=SSER$SSER
   
   #If this tier was processed
-  if(length(SSER)>0){
+  if(dim(SSER)[1]>0){
   
   id.retained = SSER %>% 
     dplyr::filter({{col_name}}<=mycutoff) %>% 
     dplyr::select(SampleID) %>%
     as_vector() %>% unique()
   
-
-
   
   id.toprogress = setdiff(
     SSER %>% dplyr::select(SampleID) %>% as_vector(), 
     id.retained
     )
+  
   n=dim(SSER)[1]
   n_retained=length(id.retained)
   n_progress=n-n_retained
   
-  #if finalTier of tree, add all samples to retained
-  #If less than min to progress, add all samples to retained
-  if(finalTier == TRUE || ( (dim(SSER)[1]-length(id.retained)) < minTierSize) ){
-    id.retained = SSER %>% select(SampleID) %>% as_vector() %>% unique()
-    id.toprogress = NULL
-  }
-  
-
-  
   TSER_overall = SSER %>% 
-    
     dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>% 
     dplyr::mutate(strata="Overall",
                   n=n)
   
-  TSER_retained = SSER %>% 
-    dplyr::filter({SampleID} %in% id.retained) %>% 
-    dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>% 
-    dplyr::mutate(strata="Retained",
-                  n=n_retained)
-
   TSER_progress = SSER %>% 
     dplyr::filter(!{SampleID} %in% id.retained) %>% 
     dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>% 
     dplyr::mutate(strata="To progress",
                   n=n_progress)
   
+  TSER_retained = SSER %>% 
+    dplyr::filter({SampleID} %in% id.retained) %>% 
+    dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>% 
+    dplyr::mutate(strata="Retained",
+                  n=n_retained)
+  
+  
+  #if finalTier of tree, add all samples to retained
+  #If less than min to progress, add all samples to retained
+  if(finalTier == TRUE || ( n_progress < minTierSize) ){
+    print("Too small")
+    
+    TSER_retained = SSER %>% 
+      dplyr::summarise(tser=(1-mean(sser, na.rm=T))) %>% 
+      dplyr::mutate(strata="Retained",
+                    n=n)
+    TSER_progress = tibble(strata="To progress",mean = 0,n=0)
+    
+    id.retained = SSER %>% select(SampleID) %>% as_vector() %>% unique()
+    n_retained=length(id.retained)
+    id.toprogress = NULL
+    n_progress = 0
+    
+  }
+  
+
   #Tier not processed, creating empty results object
   }else{
     id.retained = NULL
@@ -250,9 +254,10 @@ tser_cutoff <- function(SSER=NULL, col_name=sser, mycutoff=0.5, finalTier, minTi
       strata=factor(strata, levels=c("Overall", "Retained", "To progress"))
     )
   
+  print(TSER_cutoff)
   
   #If tier was processed
-  if(length(SSER)>0){
+  if(dim(SSER)[1]>0){
   
   strata = dplyr::bind_rows(
     SSER %>% 
@@ -316,14 +321,16 @@ tser_plot <- function(TSER, col_name, mycutoff) {
   return(pTSER)
 }
 
-
+#Box plot
 tsercutoff_plot <- function(TSERcutoff){
-
+  print("PLOT")
+  print("TSERcutoff")
   #Remove this if retaining entries with missing values
   TSERcutoff = TSERcutoff %>% filter(TSERcutoff$strata == "To progress" | TSERcutoff$strata == "Retained")
   p = TSERcutoff %>%
     ggplot() +
-    geom_boxplot(aes(y=1-tser, x=strata, fill=strata)) +
+    #CHECING THIS &*&*
+    geom_boxplot(aes(y=tser, x=strata, fill=strata)) +
     ylim(0, 1) +
     scale_x_discrete(guide = guide_axis(n.dodge=3))+
     ylab("Tier-Specific Accuracy Rate") + xlab("") +

@@ -69,6 +69,8 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
       
       #Final tier check
       # this will later enforce that all samples are allocated to a leaf node regardless of error
+      # print(length(rownames(colData(MultiAssayExperiment))))
+      # print(length(id.retained))
       finalTier = FALSE
       if(ntier == dim(myperms)[2] || (length(rownames(colData(MultiAssayExperiment))) - length(id.retained)) < minTierSize)
       {
@@ -119,6 +121,8 @@ MTDT.algmClassifyR <-   function(MultiAssayExperiment,
       
       #retained is now current + new retained
       id.retained = c(id.retained, MTunits[[ntier]]$id$id.retained)
+      
+      print(id.retained)
 
       retained = MTunits[[ntier]]$id$id.retained %>% unique() %>% length()
       toprogress = MTunits[[ntier]]$id$id.toprogress %>% unique() %>% length()
